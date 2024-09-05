@@ -46,7 +46,7 @@ class ZakariyyaBooksScraper(AbstractBookScraper):
             return book_info
         return book_info
 
-    def find_product_links(self, soup, url):
+    def find_product_links(self, soup):
         links = []
         for link in soup.find_all('a', href=True):
             href = link['href']
@@ -55,9 +55,11 @@ class ZakariyyaBooksScraper(AbstractBookScraper):
                 links.append(absolute_url)
         return links
     
-    def is_product_url(self, soup, url):
-        return '/product/' in url
+    def is_product_url(self, url):
+        return url.startswith(self.base_url) and '/product/' in url
 
+    def ignore_url(self, url) -> bool:
+        return "wp-content" in url 
 
 # Test parsing
 if __name__ == '__main__':

@@ -18,6 +18,8 @@ logger = logging.getLogger('scraper')
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
+
+
 file_handler = logging.FileHandler(f'logs/scraper-{start_timestamp}.log')
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
@@ -54,8 +56,18 @@ class AbstractBookScraper(ABC):
     def is_product_url(self, soup, url):
         pass
 
+    @abstractmethod
+    def find_product_links(self, soup):
+        pass
+
+
+    @abstractmethod
+    def ignore_url(self, url) -> bool:
+        # for urls that should not be visited such as image uploads. True if should be ignored
+        pass
+
     def url_in_domain(self, url):
-        return self.base_url in url
+        return url.startswith(self.base_url)
 
     def write_to_csv(self, book_list):
         with open('csvs/' + self.name, 'w', newline='', encoding='utf-8') as file:
@@ -69,6 +81,7 @@ class AbstractBookScraper(ABC):
             for link in links:
                 file.write(str(link))
                 file.write('\n')
+
 
     def crawl_product_pages(self, initial_urls=list(), use_cached_links=None):
 
@@ -128,7 +141,7 @@ class AbstractBookScraper(ABC):
                     continue
 
                 # If it is a product page, extract book information
-                if self.is_product_url(soup, url):
+                if self.is_product_url(url):
                     logger.debug(f'Parsing {url}')
                     try:
                         book_info = self.extract_book_info(soup, url)
@@ -142,7 +155,7 @@ class AbstractBookScraper(ABC):
                 # Find all links on the page and add product links to the queue
                 new_links = [link['href'] for link in soup.find_all('a', href=True)]
                 for link in new_links:
-                    if self.url_in_domain(link) and link not in visited_urls and link not in urls_to_visit and link.startswith(('http://', 'https://')):
+                    if self.url_in_domain(link) and link not in visited_urls and link not in urls_to_visit and link.startswith(self.base_url) and not self.ignore_url(link):# link.startswith(('http://', 'https://')):
                         urls_to_visit.append(link)
                         logger.debug(f'Adding {link} to urls to visit')
 
