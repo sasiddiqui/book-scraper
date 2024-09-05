@@ -1,0 +1,4 @@
+csvs/*
+logs/*
+scraper_cache/*
+saved_progress/*
