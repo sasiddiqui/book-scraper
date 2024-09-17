@@ -64,9 +64,6 @@ class AbstractBookScraper(ABC):
     def is_product_url(self, url):
         pass
 
-    @abstractmethod
-    def find_product_links(self, soup):
-        pass
 
     @abstractmethod
     def ignore_url(self, url) -> bool:
@@ -134,7 +131,7 @@ class AbstractBookScraper(ABC):
         logger.debug(f'Starting to crawl {self.urls_to_visit}')
 
         count = 0
-        batch_size = 25
+        batch_size = 150
 
         async with aiohttp.ClientSession() as session:
             while self.urls_to_visit:
@@ -164,6 +161,7 @@ class AbstractBookScraper(ABC):
                                 if book_info:
                                     self.all_books.append(book_info)
                                     logger.debug(f'Got book info {book_info}')
+
                             except AttributeError:
                                 logger.warning(f'Could not find essential book details on {url}')
 
