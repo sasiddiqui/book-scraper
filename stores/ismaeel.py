@@ -41,13 +41,7 @@ class IsmaeelScraper(AbstractBookScraper):
             except AttributeError:
                 pass
 
-            try:
-                book_info["publisher"] = soup.find("th", text="الناشر").find_next("a").text.strip()    
-            except AttributeError:
-                try:
-                    book_info["publisher"] = soup.find("th", text="PUBLISHER").find_next("p").text.strip()    
-                except AttributeError:
-                    pass
+
 
             book_info["price"] = soup.find("meta", attrs={"name" : "twitter:data1"})["content"].strip().replace("£", "")
 
@@ -58,7 +52,14 @@ class IsmaeelScraper(AbstractBookScraper):
         try:
             book_info["image"] = soup.find("img", class_="wp-post-image")["src"]
             book_info["instock"] = soup.find("meta", attrs={"name" : "twitter:data2"})["content"].strip() == "In stock"
-        
+            try:
+                book_info["publisher"] = soup.find("th", text="الناشر").find_next("a").text.strip()    
+            except AttributeError:
+                try:
+                    book_info["publisher"] = soup.find("th", text="PUBLISHER").find_next("p").text.strip()    
+                except AttributeError:
+                    pass       
+
         except AttributeError:
             self.logger.warning(f"Could not find extra book details on {url}")
             return book_info

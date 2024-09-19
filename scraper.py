@@ -131,7 +131,7 @@ class AbstractBookScraper(ABC):
         logger.debug(f'Starting to crawl {self.urls_to_visit}')
 
         count = 0
-        batch_size = 150
+        batch_size = 20
 
         async with aiohttp.ClientSession() as session:
             while self.urls_to_visit:
