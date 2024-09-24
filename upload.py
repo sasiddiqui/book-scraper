@@ -13,7 +13,7 @@ print("Pinged your deployment. You successfully connected to MongoDB!")
 db = client["data"]
 books = db["books"]
 
-data = json.load(open("jsons/albadr.json"))
+data = json.load(open("jsons/qurtuba.json"))
 # data.append(json.load(open("jsons/co.json")))
 
 books.insert_many(data)

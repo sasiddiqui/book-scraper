@@ -55,6 +55,7 @@ class AbstractBookScraper(ABC):
         self.urls_to_visit = set()
         self.visited_urls = set()
         self.all_books = []
+        self.count = 0
 
     @abstractmethod
     def extract_book_info(self, soup, url):
@@ -91,7 +92,8 @@ class AbstractBookScraper(ABC):
     async def fetch_page(self, session: ClientSession, url: str) -> tuple[str, str]:
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            "Accept-Language": "en-US,en;q=0.5",
         }
         try:
             async with session.get(url, headers=headers, timeout=20) as response:
@@ -130,8 +132,8 @@ class AbstractBookScraper(ABC):
 
         logger.debug(f'Starting to crawl {self.urls_to_visit}')
 
-        count = 0
-        batch_size = 20
+        self.count = 0
+        batch_size = 25
 
         async with aiohttp.ClientSession() as session:
             while self.urls_to_visit:
@@ -166,7 +168,6 @@ class AbstractBookScraper(ABC):
                                 logger.warning(f'Could not find essential book details on {url}')
 
                         if not soup:
-                            # only parse the <a> tags to optimize
                             soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
                         
                         # Find all links on the page and add product links to the queue
@@ -177,15 +178,12 @@ class AbstractBookScraper(ABC):
                                 self.urls_to_visit.append(absolute_link)
                                 logger.debug(f'Adding {absolute_link} to urls to visit')
                         
-                    count += 1
-                    print(count)
-                    if count % 25 == 0:
+                    self.count += 1
+                    print(self.count)
+                    if self.count % 25 == 0:
                         self.save_lines_to_file(self.urls_to_visit, f"saved_progress/urls_to_visit_{start_timestamp}")
                         self.save_lines_to_file(list(self.visited_urls), f"saved_progress/visited_urls_{start_timestamp}")
-                        # with open(f"saved_progress/all_books_{start_timestamp}", 'wb') as file:
-                            
-                        #     pickle.dump(self.all_books, file)
-                        logger.info(f'Saved progress at {count} links')
+                        logger.info(f'Saved progress at {self.count} links')
                             
                         self.write_to_json()
 
