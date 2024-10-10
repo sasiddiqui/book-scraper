@@ -12,13 +12,16 @@ class SifatuSafwa(AbstractBookScraper):
             "#",
             "SubmitCurrency=",
             "id_currency=",
-            ".jpg"
+            ".jpg",
+            "/ar/",
+            "/fr/",
+            "order="
         ]
 
         return any(i in url for i in ig)
     
     def is_product_url(self, url):
-        return url.endswith(".html")
+        return url.endswith(".html") and "/en/" in url
 
     def extract_book_info(self, soup, url) -> dict | None:
         book_info = {}
@@ -33,7 +36,7 @@ class SifatuSafwa(AbstractBookScraper):
             else:
                 title = soup.find("meta", property="og:title")
                 book_info["title"] = title["content"]
-                
+
         except Exception as e:
             print(e)
             self.logger.error(f"Could not find title for {url}")

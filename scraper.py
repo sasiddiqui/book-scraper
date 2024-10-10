@@ -88,17 +88,23 @@ class AbstractBookScraper(ABC):
             for link in links:
                 file.write(str(link))
                 file.write('\n')
+    
+    # in a method so that it can be overridden by some scrapers
+    def add_book(self, book_info) -> None:
+        if book_info:
+            self.all_books.append(book_info)
+            logger.debug(f'Got book info {book_info}')
+
+
 
     async def fetch_page(self, session: ClientSession, url: str) -> tuple[str, str]:
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            "Accept-Language": "en-US,en;q=0.5",
         }
         try:
             async with session.get(url, headers=headers, timeout=20) as response:
                 if response.status == 200:
-                    content = await response.text()
+                    content = await response.content.read()
                     print(f'Fetched {url}')
                     return url, content
                 else:
@@ -133,7 +139,7 @@ class AbstractBookScraper(ABC):
         logger.debug(f'Starting to crawl {self.urls_to_visit}')
 
         self.count = 0
-        batch_size = 25
+        batch_size = 6
 
         async with aiohttp.ClientSession() as session:
             while self.urls_to_visit:
@@ -160,12 +166,11 @@ class AbstractBookScraper(ABC):
                             try:
                                 book_info = self.extract_book_info(soup, url)
 
-                                if book_info:
-                                    self.all_books.append(book_info)
-                                    logger.debug(f'Got book info {book_info}')
-
                             except AttributeError:
                                 logger.warning(f'Could not find essential book details on {url}')
+                                continue 
+
+                            self.add_book(book_info)
 
                         if not soup:
                             soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
