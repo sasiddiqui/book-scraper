@@ -7,12 +7,11 @@ from stores.alhidaayah import AlHidayaah
 from stores.qurtuba import Qurtuba
 from stores.sifatusafwa import SifatuSafwa
 from stores.kitaabun import Kitaabun
+from stores.albalagh import AlBalagh
 
 async def main():
     # await ZakariyyaBooksScraper().crawl_product_pages()
-    await Kitaabun().crawl_product_pages([
-        "https://kitaabun.com/shopping3/products_new.php" + f"?page={i}" for i in range(1, 278)
-    ])
+    await AlBalagh().crawl_product_pages()
 
 if __name__ == '__main__':
     # call main

@@ -6,6 +6,8 @@ class Kitaabun(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://kitaabun.com/shopping3/products_new.php")
         self.name = "kitaabun"
+        self.batch_size = 5
+
     
     def ignore_url(self, url) -> bool:
         # only scrap display pages 

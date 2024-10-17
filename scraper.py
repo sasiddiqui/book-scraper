@@ -56,6 +56,8 @@ class AbstractBookScraper(ABC):
         self.visited_urls = set()
         self.all_books = []
         self.count = 0
+        self.batch_size = 20
+        self.strainer = SoupStrainer()
 
     @abstractmethod
     def extract_book_info(self, soup, url):
@@ -100,6 +102,7 @@ class AbstractBookScraper(ABC):
     async def fetch_page(self, session: ClientSession, url: str) -> tuple[str, str]:
 
         headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         try:
             async with session.get(url, headers=headers, timeout=20) as response:
@@ -139,14 +142,13 @@ class AbstractBookScraper(ABC):
         logger.debug(f'Starting to crawl {self.urls_to_visit}')
 
         self.count = 0
-        batch_size = 6
 
         async with aiohttp.ClientSession() as session:
             while self.urls_to_visit:
                 tasks = []
                 # Process URLs in batches
                 # create a batch of URLs to visit
-                for _ in range(min(batch_size, len(self.urls_to_visit))):
+                for _ in range(min(self.batch_size, len(self.urls_to_visit))):
                     url = self.urls_to_visit.pop()
                     if url in self.visited_urls:
                         continue
@@ -161,7 +163,7 @@ class AbstractBookScraper(ABC):
                         soup = None
                         # If it is a product page, extract book information
                         if self.is_product_url(url):
-                            soup = BeautifulSoup(response, 'lxml')
+                            soup = BeautifulSoup(response, 'lxml', parse_only=self.strainer)
                             logger.debug(f'Parsing {url}')
                             try:
                                 book_info = self.extract_book_info(soup, url)
@@ -172,8 +174,7 @@ class AbstractBookScraper(ABC):
 
                             self.add_book(book_info)
 
-                        if not soup:
-                            soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
+                        soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
                         
                         # Find all links on the page and add product links to the queue
                         new_links = [link['href'] for link in soup.find_all('a', href=True)]

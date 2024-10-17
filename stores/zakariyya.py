@@ -11,25 +11,28 @@ class ZakariyyaBooksScraper(AbstractBookScraper):
     def extract_book_info(self, soup: BeautifulSoup, url):
         book_info = {}
 
-        book_info['URL'] = url
+        book_info['url'] = url
 
         try:
-            book_info['Title'] = soup.find('h1', class_='entry-title').text.strip()
+            book_info['title'] = soup.find('h1', class_='entry-title').text.strip()
         except AttributeError:
             self.logger.warning(f"Could not find title for {url}")
             return None
 
         try:
-            book_info['Author'] = soup.find('tr', class_='woocommerce-product-attributes-item--attribute_pa_book-author').find('td').text.strip()
-            book_info['Publisher'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_publisher').find('td').text.strip()
+            book_info['author'] = soup.find('tr', class_='woocommerce-product-attributes-item--attribute_pa_book-author').find('td').text.strip()
+            book_info['publisher'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_publisher').find('td').text.strip()
 
             price_container = soup.select('p.price.product-page-price').pop()
             # account for sale price and regular price
             sale_price = price_container.find("ins")
             if sale_price:
-                book_info['Price'] = sale_price.text.strip()
+                book_info['price'] = sale_price.text.strip()
             else:
-                book_info['Price'] = price_container.find("span", class_="woocommerce-Price-amount amount").text.strip()
+                book_info['price'] = price_container.find("span", class_="woocommerce-Price-amount amount").text.strip()
+            if book_info['price']:
+                book_info["price"] = float(book_info["price"].replace("£", "")) * 1.32
+
 
 
         except AttributeError:
@@ -40,18 +43,9 @@ class ZakariyyaBooksScraper(AbstractBookScraper):
             if soup.find("img", class_="wp-post-image ux-skip-lazy").has_attr("src"):
                 book_info["Image"] = soup.find("img", class_="wp-post-image ux-skip-lazy")["src"]
 
-            book_info["In Stock"] = soup.find('p', class_='stock out-of-stock') is None
+            book_info["instock"] = soup.find('p', class_='stock out-of-stock') is None
                 
-            book_info['Editor'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_editor').find('td').text.strip()
-            book_info['Edition'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_edition').find('td').text.strip()
-            book_info['Year Published'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_year-published').find('td').text.strip()
-            book_info['Volumes'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_volumes').find('td').text.strip()
-            book_info['Pages'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_pages').find('td').text.strip()
-            book_info['Binding'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_binding').find('td').text.strip()
-            book_info['Weight'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--weight').find('td').text.strip()
-
-
-            # TODO breadcrumbs for categories
+            book_info['editor'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_editor').find('td').text.strip()
 
         except AttributeError:
             self.logger.warning(f"Could not find extra book details on {url}")
