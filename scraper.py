@@ -58,6 +58,9 @@ class AbstractBookScraper(ABC):
         self.count = 0
         self.batch_size = 20
         self.strainer = SoupStrainer()
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
 
     @abstractmethod
     def extract_book_info(self, soup, url):
@@ -101,11 +104,9 @@ class AbstractBookScraper(ABC):
 
     async def fetch_page(self, session: ClientSession, url: str) -> tuple[str, str]:
 
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+
         try:
-            async with session.get(url, headers=headers, timeout=20) as response:
+            async with session.get(url, headers=self.headers, timeout=20) as response:
                 if response.status == 200:
                     content = await response.content.read()
                     print(f'Fetched {url}')

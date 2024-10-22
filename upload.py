@@ -13,7 +13,7 @@ print("Pinged your deployment. You successfully connected to MongoDB!")
 db = client["data"]
 books = db["books"]
 
-data = json.load(open("jsons/kunuz.json"))
+data = json.load(open("jsons/buraq.json"))
 
 # ensure every book has the following keys: url, source, title, price, image, instock otherwise remove it
 req = ["url", "source", "title", "price", "image", "instock"]
