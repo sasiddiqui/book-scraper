@@ -18,7 +18,9 @@ class StatusManager:
     """
     def __init__(self, scrapers):
         # get the status doc
-        self.status = db["status"].find_one() or {}
+        self.status = db["status"].find_one() or {
+            "status": "idle"
+        }
 
         # take each scraper and add it to the status
         for scraper in scrapers:
@@ -35,6 +37,10 @@ class StatusManager:
 
     def _save(self):
         db["status"].update_one({}, {"$set": self.status}, upsert=True)
+    
+    def set_status(self, status: str):
+        self.status["status"] = status
+        self._save()
     
     def update_status(self, scraper_name, last_crawled, error: str, time_to_crawl: int, total_books: int | None = None):
         if scraper_name not in self.status:

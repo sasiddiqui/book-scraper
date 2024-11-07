@@ -48,6 +48,7 @@ async def main():
         for scraper in scrapers:
             try:
                 scrape = scraper()
+                status.set_status(scrape.name)
 
                 start_time = datetime.now()
                 books = await scrape.crawl_product_pages()
@@ -68,6 +69,7 @@ async def main():
             logger.info(f"Finished {scrape.name}")
         
         logger.info("Sleeping for 1 hour")
+        status.set_status("idle")
         await asyncio.sleep(3600)
 
 if __name__ == '__main__':
