@@ -7,6 +7,7 @@ class Book(BaseModel):
     url: str
     instock: bool
     image: str
+    source: str
 
     publisher: Optional[str] = None
     author: Optional[str] = None
