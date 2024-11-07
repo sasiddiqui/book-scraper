@@ -4,8 +4,7 @@ from scraper import AbstractBookScraper
 
 class AlBadrBooksScraper(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://albadr.co.uk/")
-        self.name = "albadr"
+        super().__init__("https://albadr.co.uk/", "Al-Badr", convert_rate=1.3)
     
     def ignore_url(self, url) -> bool:
         ig = [
@@ -26,7 +25,7 @@ class AlBadrBooksScraper(AbstractBookScraper):
         book_info = {}
 
         book_info['url'] = url
-        book_info["source"] = "AlBadr"
+        book_info["source"] = self.name
 
         try:
             book_info["title"] = soup.find("h1", class_="product_title entry-title").text.strip() + " | " + soup.find("div", class_="woocommerce-product-details__short-description").text.strip()
@@ -41,8 +40,7 @@ class AlBadrBooksScraper(AbstractBookScraper):
                 if price.endswith("."):
                     price = price[:-1]
 
-                # scuffed as heck
-                book_info["price"] = float(price) * 1.32
+                book_info["price"] = float(price) 
 
             book_info["image"] = soup.find("img", class_="attachment-shop_single size-shop_single")["src"]
         

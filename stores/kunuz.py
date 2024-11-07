@@ -4,8 +4,7 @@ from scraper import AbstractBookScraper
 
 class Kunuz(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://www.alkunuz.co.uk")
-        self.name = "kunuz"
+        super().__init__("https://www.alkunuz.co.uk", "Al-Kunuz", convert_rate=1.3)
         self.batch_size = 10
     
     def ignore_url(self, url) -> bool:
@@ -16,7 +15,7 @@ class Kunuz(AbstractBookScraper):
     
     def extract_book_info(self, soup, url):
         book_info = {}
-        book_info["source"] = "Al-Kunuz"
+        book_info["source"] = self.name
         # escape the url for arabic characters
         book_info["url"] = urllib.parse.quote(url, safe=':/')
 
@@ -28,7 +27,7 @@ class Kunuz(AbstractBookScraper):
         
         try:
             book_info["price"] = soup.find("meta", property="product:price:amount")["content"].replace("£", "").replace(" ", "")
-            book_info["price"] = float(book_info["price"]) * 1.32
+            book_info["price"] = float(book_info["price"]) 
         except Exception as e:
             self.logger.error(f"Could not find price for {url}")
             return None

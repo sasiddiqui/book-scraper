@@ -5,7 +5,7 @@ from scraper import AbstractBookScraper
 
 class IsmaeelScraper(AbstractBookScraper):
     def __init__(self):
-        super().__init__('https://ismaeelbooks.co.uk/')
+        super().__init__('https://ismaeelbooks.co.uk/', "Ismaeel Books")
 
     def ignore_url(self, url: str) -> bool:
         ig = [
@@ -26,7 +26,7 @@ class IsmaeelScraper(AbstractBookScraper):
         book_info = {}
 
         book_info['url'] = url
-        book_info["source"] = "Ismaeel Books"
+        book_info["source"] = self.name
 
         try:
             book_info['title'] = soup.find('h1', class_='entry-title').text.strip()

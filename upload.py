@@ -1,41 +1,62 @@
-import json
+from book import Book
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
 uri = open("mongourl.txt").read().strip()
 
-# Create a new client and connect to the server
 client = MongoClient(uri, server_api=ServerApi('1'))
-
 client.admin.command('ping')
 print("Pinged your deployment. You successfully connected to MongoDB!")
 
 db = client["data"]
-books = db["books"]
-
-data = json.load(open("jsons/buraq.json"))
-
-# ensure every book has the following keys: url, source, title, price, image, instock otherwise remove it
-req = ["url", "source", "title", "price", "image", "instock"]
-length = len(data)
-
-for book in data:
-    if not all(key in book for key in req):
-        data.remove(book)
-
-a = input(f"Removed {length - len(data)} books from the list of {length} books. Do you want to continue? (y/n) ")
-if a.lower() != "y":
-    print("Exiting...")
-    exit()
 
 
-books.insert_many(data)
 
-# count = 1
-# for book in books.find({"source": "Qurtuba"}):
-#     print(count)
-#     books.update_one({"_id": book["_id"]}, {"$set": {"price": float(book["price"] * 1.33)}})
-#     count += 1
+class StatusManager:
+    """
+    Manages the status of the scrapers and inserts into db for frontend to display
+    """
+    def __init__(self, scrapers):
+        # get the status doc
+        self.status = db["status"].find_one() or {}
 
-print("Inserted all books into the database")
+        # take each scraper and add it to the status
+        for scraper in scrapers:
+            # if new scraper, add it to the status
+            if (name := scraper().name) not in self.status:
+                self.status[name] = {
+                    "last_crawled": None,
+                    "error": None,
+                    "time_to_crawl": None,
+                    "total_books": db["books"].count_documents({"source": name})
+                }
 
+        self._save()
+
+    def _save(self):
+        db["status"].update_one({}, {"$set": self.status}, upsert=True)
+    
+    def update_status(self, scraper_name, last_crawled, error: str, time_to_crawl: int, total_books: int | None = None):
+        if scraper_name not in self.status:
+            raise ValueError(f"Scraper {scraper_name} not found in status")
+        
+        self.status[scraper_name]["last_crawled"] = last_crawled
+        self.status[scraper_name]["error"] = error
+        self.status[scraper_name]["time_to_crawl"] = time_to_crawl
+
+        if total_books is None:
+            total_books = db["books"].count_documents({"source": scraper_name})
+
+        self.status[scraper_name]["total_books"] = total_books
+        
+        self._save()
+
+class BookManager:
+    def __init__(self):
+        self.books = db["books"]
+
+    def upload_books(self, source, books: list[Book]) -> None:
+        """delete all books for this source then insert new ones"""
+
+        self.books.delete_many({"source": source})
+        self.books.insert_many(books)

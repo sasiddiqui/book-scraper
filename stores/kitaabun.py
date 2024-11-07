@@ -4,8 +4,7 @@ from scraper import AbstractBookScraper
 
 class Kitaabun(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://kitaabun.com/shopping3/products_new.php")
-        self.name = "kitaabun"
+        super().__init__("https://kitaabun.com/shopping3/products_new.php", "Kitaabun")
         self.batch_size = 5
 
     
@@ -24,7 +23,7 @@ class Kitaabun(AbstractBookScraper):
 
         for card in soup.find_all("div", "card p-2"):
             book = {
-                "source" : "Kitaabun"
+                "source" : self.name
             }
 
             try:

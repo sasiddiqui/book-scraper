@@ -10,9 +10,9 @@ from stores.kitaabun import Kitaabun
 from stores.kunuz import Kunuz
 from stores.buraq import Buraq                  
 
-url = "https://buraqbooks.com/products/%D8%A7%D9%84%D9%81%D8%AA%D8%A7%D9%88%D9%89-%D8%A7%D9%84%D8%AA%D8%A7%D8%AA%D8%B1%D8%AE%D8%A7%D9%86%D9%8A%D8%A9"
+url = "https://www.sifatusafwa.com/en/adhkar-and-duah/al-adhkar-by-imam-an-nawawi.html"
 
-scraper = Buraq()
+scraper = SifatuSafwa()
 
 
 response = requests.get(url, headers=scraper.headers)

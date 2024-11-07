@@ -1,4 +1,4 @@
-import logging
+from book import Book
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from scraper import AbstractBookScraper
@@ -6,12 +6,13 @@ from scraper import AbstractBookScraper
 
 class ZakariyyaBooksScraper(AbstractBookScraper):
     def __init__(self):
-        super().__init__('https://www.zakariyyabooks.com')
+        super().__init__('https://www.zakariyyabooks.com', "Zakariyya Books", convert_rate=1.32)
 
     def extract_book_info(self, soup: BeautifulSoup, url):
         book_info = {}
 
         book_info['url'] = url
+        book_info['source'] = self.name
 
         try:
             book_info['title'] = soup.find('h1', class_='entry-title').text.strip()
@@ -31,7 +32,7 @@ class ZakariyyaBooksScraper(AbstractBookScraper):
             else:
                 book_info['price'] = price_container.find("span", class_="woocommerce-Price-amount amount").text.strip()
             if book_info['price']:
-                book_info["price"] = float(book_info["price"].replace("£", "")) * 1.32
+                book_info["price"] = float(book_info["price"].replace("£", ""))
 
 
 
@@ -40,16 +41,16 @@ class ZakariyyaBooksScraper(AbstractBookScraper):
             return book_info
 
         try:
-            if soup.find("img", class_="wp-post-image ux-skip-lazy").has_attr("src"):
-                book_info["Image"] = soup.find("img", class_="wp-post-image ux-skip-lazy")["src"]
+            if (img := soup.find("img", class_="wp-post-image")) and img.has_attr("src"):
+                book_info["image"] = img["src"]
 
             book_info["instock"] = soup.find('p', class_='stock out-of-stock') is None
                 
-            book_info['editor'] = soup.find('tr', class_='woocommerce-product-attributes-item woocommerce-product-attributes-item--attribute_pa_editor').find('td').text.strip()
 
         except AttributeError:
             self.logger.warning(f"Could not find extra book details on {url}")
             return book_info
+        
         return book_info
 
     def find_product_links(self, soup):

@@ -1,5 +1,6 @@
+from pydantic import ValidationError
 from abc import ABC, abstractmethod
-import requests
+from book import Book
 import json
 import time
 import requests_cache
@@ -10,6 +11,9 @@ import logging
 import datetime
 import pickle
 
+
+class ScraperError(Exception):
+    pass
 
 start_timestamp = str(datetime.datetime.now())
 
@@ -48,9 +52,9 @@ import aiohttp
 from aiohttp import ClientSession
 
 class AbstractBookScraper(ABC):
-    def __init__(self, base_url):
+    def __init__(self, base_url, name, convert_rate=1):
         self.base_url = base_url
-        self.name = remove_tld(base_url)
+        self.name = name
         self.logger = logger
         self.urls_to_visit = set()
         self.visited_urls = set()
@@ -62,8 +66,14 @@ class AbstractBookScraper(ABC):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
 
+        self.error_count = 0
+        self.ERROR_THRESHOLD = 20
+
+        # converting from GBP to USD
+        self.convert_rate = convert_rate
+
     @abstractmethod
-    def extract_book_info(self, soup, url):
+    def extract_book_info(self, soup, url) -> Book | None:
         pass
 
     @abstractmethod
@@ -95,16 +105,12 @@ class AbstractBookScraper(ABC):
                 file.write('\n')
     
     # in a method so that it can be overridden by some scrapers
-    def add_book(self, book_info) -> None:
+    def add_book(self, book_info: Book) -> None:
         if book_info:
-            self.all_books.append(book_info)
-            logger.debug(f'Got book info {book_info}')
-
+            self.all_books.append(book_info.model_dump())
 
 
     async def fetch_page(self, session: ClientSession, url: str) -> tuple[str, str]:
-
-
         try:
             async with session.get(url, headers=self.headers, timeout=20) as response:
                 if response.status == 200:
@@ -113,10 +119,24 @@ class AbstractBookScraper(ABC):
                     return url, content
                 else:
                     self.logger.error(f'Failed to retrieve the page. Status code: {response.status}')
+                    self.error_count += 1
+
+                    fatal_response_codes = [503, 429]
+                    if response.status in fatal_response_codes:
+                        raise ScraperError(f'Fatal error on {url}')
+
+                    
+
         except asyncio.TimeoutError:
             self.logger.error(f'Timeout on {url}')
         except Exception as e:
             self.logger.error(f'Unexpected error on {url}: {e}')
+            self.error_count += 1
+            if isinstance(e, ScraperError):
+                raise e
+        
+        if self.error_count > self.ERROR_THRESHOLD:
+            raise ScraperError(f'Error threshold reached for {url}')
         
         return url, None
 
@@ -132,7 +152,7 @@ class AbstractBookScraper(ABC):
         with open(f"saved_progress/all_books_{use_cached_links}", 'rb') as file:
             self.all_books = pickle.load(file)
 
-    async def crawl_product_pages(self, initial_urls=list(), use_cached_links=None):
+    async def crawl_product_pages(self, initial_urls=list(), use_cached_links=None) -> list[dict]:
 
         start = time.time()
         if use_cached_links:
@@ -169,6 +189,16 @@ class AbstractBookScraper(ABC):
                             try:
                                 book_info = self.extract_book_info(soup, url)
 
+                                if book_info is not None:
+                                    try:
+                                        book_info = Book(**book_info)
+                                        book_info.price *= self.convert_rate
+
+                                    except ValidationError as e:
+                                        logger.warning(f'Could not validate book info on {url}: {e}')
+                                        continue
+
+
                             except AttributeError:
                                 logger.warning(f'Could not find essential book details on {url}')
                                 continue 
@@ -197,4 +227,5 @@ class AbstractBookScraper(ABC):
             # Write all extracted book information to a CSV file
             self.write_to_json()
             logger.info(f"Finished crawling in {time.time() - start} seconds")
+            return self.all_books
 

@@ -4,8 +4,7 @@ from scraper import AbstractBookScraper
 
 class Qurtuba(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://qurtubabooks.com/")
-        self.name = "qurtuba"
+        super().__init__("https://qurtubabooks.com/", "Qurtuba", convert_rate=1.3)
     
     def ignore_url(self, url) -> bool:
         ig = [
@@ -23,7 +22,7 @@ class Qurtuba(AbstractBookScraper):
         book_info = {}
 
         book_info['url'] = url
-        book_info["source"] = "Qurtuba"
+        book_info["source"] = self.name
 
         try:
             book_info["title"] = soup.find("h1", class_="product-title product_title entry-title").text.strip()
@@ -50,12 +49,13 @@ class Qurtuba(AbstractBookScraper):
         
         try: 
             book_info["image"] = soup.find("img", class_="wp-post-image ux-skip-lazy")["src"]
-        except AttributeError as e:
+        except Exception as e:
             self.logger.warning(f"Could not find image details on {url}")
 
         try: 
             book_info["instock"] = soup.find("p", class_="stock in-stock") is not None
-        except AttributeError as e:
+        except Exception as e:
             self.logger.warning(f"Could not find stock details on {url}")
+        
         
         return book_info

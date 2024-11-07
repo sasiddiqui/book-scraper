@@ -4,8 +4,7 @@ from scraper import AbstractBookScraper
 
 class Buraq(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://buraqbooks.com")
-        self.name = "buraq"
+        super().__init__("https://buraqbooks.com", "Buraq Books")
         self.batch_size = 10
 
         self.headers["Accept-Language"] = "en-US,en;q=0.5"
@@ -21,7 +20,7 @@ class Buraq(AbstractBookScraper):
 
         book_info = {}
         book_info["url"] = soup.find("meta", property="og:url").get("content")
-        book_info["source"] = "Buraq Books"
+        book_info["source"] = self.name
 
         try:
             book_info["title"] = soup.find("meta", property="og:title").get("content")

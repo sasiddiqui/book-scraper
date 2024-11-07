@@ -1,11 +1,13 @@
-from bs4 import BeautifulSoup
+from bs4 import SoupStrainer
 from urllib.parse import urljoin
 from scraper import AbstractBookScraper
 
 class SifatuSafwa(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://www.sifatusafwa.com")
-        self.name = "sifatusafwa"
+        super().__init__("https://www.sifatusafwa.com", "Sifatu Safwa", convert_rate=1.2)
+
+
+        self.headers["Accept-Language"] = "en-US,en;q=0.5"
     
     def ignore_url(self, url) -> bool:
         ig = [
@@ -27,7 +29,7 @@ class SifatuSafwa(AbstractBookScraper):
         book_info = {}
 
         book_info['url'] = url
-        book_info["source"] = "Sifatu Safwa"
+        book_info["source"] = self.name
 
         try:
             title = soup.findAll("dt", text="Title")
@@ -73,5 +75,6 @@ class SifatuSafwa(AbstractBookScraper):
             book_info["instock"] = soup.find("div", class_="product-unavailable") is None
         except AttributeError as e: 
             self.logger.warning(f"Could not find stock details on {url}")
+
         
         return book_info

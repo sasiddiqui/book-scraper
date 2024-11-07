@@ -4,8 +4,7 @@ from bs4 import SoupStrainer
 
 class AlBalagh(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://www.albalaghbooks.com")
-        self.name = "albalagh"
+        super().__init__("https://www.albalaghbooks.com", "Al-Balagh")
         self.strainer = SoupStrainer(["div", "h1"], class_=["span9 ty-product-block__left", "ty-product-block-title", "ty-product-img cm-preview-wrapper"])
         self.batch_size = 50
     
@@ -35,7 +34,7 @@ class AlBalagh(AbstractBookScraper):
     def extract_book_info(self, soup, url) -> dict | None:
         book_info = {}
         book_info["url"] = url
-        book_info["source"] = "Al-Balagh"
+        book_info["source"] = self.name
         try: 
             book_info["title"] = soup.find("h1", class_="ty-product-block-title").text.strip()
         except Exception as e:
