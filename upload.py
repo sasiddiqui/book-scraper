@@ -55,7 +55,7 @@ class BookManager:
     def __init__(self):
         self.books = db["books"]
 
-    def upload_books(self, source, books: list[Book]) -> None:
+    def upload_books(self, source: str, books: list[Book]) -> None:
         """delete all books for this source then insert new ones"""
 
         self.books.delete_many({"source": source})

@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from book import Book
 import json
 import time
-import requests_cache
 from bs4 import BeautifulSoup, SoupStrainer
 import csv
 from urllib.parse import urlparse, urljoin
@@ -18,7 +17,6 @@ class ScraperError(Exception):
 start_timestamp = str(datetime.datetime.now())
 
 
-requests_cache.install_cache('scraper_cache', backend='filesystem')
 
 logger = logging.getLogger('scraper')
 logger.setLevel(logging.DEBUG)
@@ -216,13 +214,12 @@ class AbstractBookScraper(ABC):
                                 logger.debug(f'Adding {absolute_link} to urls to visit')
                         
                     self.count += 1
-                    print(self.count)
-                    if self.count % 25 == 0:
-                        self.save_lines_to_file(self.urls_to_visit, f"saved_progress/urls_to_visit_{start_timestamp}")
-                        self.save_lines_to_file(list(self.visited_urls), f"saved_progress/visited_urls_{start_timestamp}")
-                        logger.info(f'Saved progress at {self.count} links')
+                    # if self.count % 25 == 0:
+                        # self.save_lines_to_file(self.urls_to_visit, f"saved_progress/urls_to_visit_{start_timestamp}")
+                        # self.save_lines_to_file(list(self.visited_urls), f"saved_progress/visited_urls_{start_timestamp}")
+                        # logger.info(f'Saved progress at {self.count} links')
                             
-                        self.write_to_json()
+                        # self.write_to_json()
 
             # Write all extracted book information to a CSV file
             self.write_to_json()
