@@ -1,15 +1,11 @@
 import asyncio
-import logging
 from datetime import datetime
-from urllib.parse import urljoin
-from scraper import ScraperError
 from stores.zakariyya import ZakariyyaBooksScraper
 from stores.ismaeel import IsmaeelScraper
 from stores.albadr import AlBadrBooksScraper
 from stores.alhidaayah import AlHidayaah
 from stores.qurtuba import Qurtuba
 from stores.sifatusafwa import SifatuSafwa
-from stores.kitaabun import Kitaabun
 from stores.albalagh import AlBalagh
 from stores.kunuz import Kunuz
 from stores.buraq import Buraq
@@ -42,7 +38,6 @@ async def main():
 
     db = BookManager()
     status = StatusManager(scrapers)
-    logger = logging.getLogger()
 
     while True:
         for scraper in scrapers:
@@ -60,15 +55,15 @@ async def main():
             except Exception as e:
 
                 time_to_crawl = datetime.now() - start_time
-                logger.error(e)
+                print(e)
                 status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
 
             else:
                 status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60, total_books=len(books))
 
-            logger.info(f"Finished {scrape.name}")
+            print(f"Finished {scrape.name}")
         
-        logger.info("Sleeping for 1 hour")
+        print("Sleeping for 1 hour")
         status.set_status("idle")
         await asyncio.sleep(3600)
 

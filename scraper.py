@@ -19,13 +19,13 @@ start_timestamp = str(datetime.datetime.now())
 
 
 logger = logging.getLogger('scraper')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
 
 
 file_handler = logging.FileHandler(f'logs/scraper-{start_timestamp}.log')
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
 console_handler = logging.StreamHandler()
@@ -113,7 +113,6 @@ class AbstractBookScraper(ABC):
             async with session.get(url, headers=self.headers, timeout=20) as response:
                 if response.status == 200:
                     content = await response.content.read()
-                    print(f'Fetched {url}')
                     return url, content
                 else:
                     self.logger.error(f'Failed to retrieve the page. Status code: {response.status}')
@@ -150,14 +149,13 @@ class AbstractBookScraper(ABC):
             self.all_books = pickle.load(file)
 
     async def crawl_product_pages(self, initial_urls=list(), use_cached_links=None) -> list[dict]:
+        print(f"Crawling {self.name}")
 
         start = time.time()
         if use_cached_links:
             self.get_cache(use_cached_links)
         else:
             self.urls_to_visit = [self.base_url] + initial_urls
-
-        logger.debug(f'Starting to crawl {self.urls_to_visit}')
 
         self.count = 0
 
@@ -222,6 +220,6 @@ class AbstractBookScraper(ABC):
 
             # Write all extracted book information to a CSV file
             self.write_to_json()
-            logger.info(f"Finished crawling in {time.time() - start} seconds")
+            print(f"Finished crawling {self.name} in {time.time() - start} seconds")
             return self.all_books
 
