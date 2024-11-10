@@ -2,3 +2,7 @@ csvs/*
 logs/*
 scraper_cache/*
 saved_progress/*
+!saved_progress/.gitkeep
+!logs/.gitkeep
+!scraper_cache/.gitkeep
+mongourl.txt
