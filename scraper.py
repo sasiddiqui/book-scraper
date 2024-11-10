@@ -119,10 +119,9 @@ class AbstractBookScraper(ABC):
                     self.logger.error(f'Failed to retrieve the page. Status code: {response.status}')
                     self.error_count += 1
 
-                    fatal_response_codes = [503, 429]
-                    if response.status in fatal_response_codes:
-                        raise ScraperError(f'Fatal error on {url}')
 
+                    if response.status in [503, 429]:
+                        raise ScraperError(f'{response.status} error on {url}')
                     
 
         except asyncio.TimeoutError:

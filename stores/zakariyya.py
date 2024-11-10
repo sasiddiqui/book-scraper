@@ -7,6 +7,7 @@ from scraper import AbstractBookScraper
 class ZakariyyaBooksScraper(AbstractBookScraper):
     def __init__(self):
         super().__init__('https://www.zakariyyabooks.com', "Zakariyya Books", convert_rate=1.32)
+        self.batch_size = 15
 
     def extract_book_info(self, soup: BeautifulSoup, url):
         book_info = {}

@@ -29,6 +29,7 @@ async def main():
     # await Buraq().crawl_product_pages()
 
     scrapers = [
+        ZakariyyaBooksScraper,
         Qurtuba,
         IsmaeelScraper,
         SifatuSafwa,
@@ -37,7 +38,6 @@ async def main():
         AlHidayaah,
         AlBalagh,
         Kunuz,      
-        ZakariyyaBooksScraper,
     ]
 
     db = BookManager()
