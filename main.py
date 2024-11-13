@@ -26,12 +26,12 @@ async def main():
 
     scrapers = [
         ZakariyyaBooksScraper,
+        AlHidayaah,
         Qurtuba,
         IsmaeelScraper,
         SifatuSafwa,
         AlBadrBooksScraper,
         Buraq,
-        AlHidayaah,
         AlBalagh,
         Kunuz,      
     ]

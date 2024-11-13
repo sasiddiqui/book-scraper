@@ -5,6 +5,8 @@ from scraper import AbstractBookScraper
 class AlHidayaah(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://www.al-hidaayah.co.uk/collections/all", "Al-Hidayaah")
+        self.headers["Accept-Language"] = "en-US,en;q=0.5"
+        self.batch_size = 8
     
     def ignore_url(self, url) -> bool:
         ig = [
