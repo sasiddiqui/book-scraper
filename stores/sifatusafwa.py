@@ -7,7 +7,6 @@ class SifatuSafwa(AbstractBookScraper):
         super().__init__("https://www.sifatusafwa.com", "Sifatu Safwa", convert_rate=1.2)
 
 
-        self.headers["Accept-Language"] = "en-US,en;q=0.5"
     
     def ignore_url(self, url) -> bool:
         ig = [
