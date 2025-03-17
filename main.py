@@ -10,7 +10,7 @@ from stores.albalagh import AlBalagh
 from stores.kunuz import Kunuz
 from stores.buraq import Buraq
 from upload import BookManager, StatusManager
-
+from scraper import AbstractBookScraper
 async def main():
 
     # await AlBadrBooksScraper().crawl_product_pages()
@@ -24,7 +24,7 @@ async def main():
     # await Kitaabun().crawl_product_pages()
     # await Buraq().crawl_product_pages()
 
-    scrapers = [
+    scrapers: list[AbstractBookScraper] = [
         ZakariyyaBooksScraper,
         AlHidayaah,
         Qurtuba,
@@ -59,7 +59,7 @@ async def main():
                 status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
 
             else:
-                status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60, total_books=len(books))
+                status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
 
             print(f"Finished {scrape.name}")
         

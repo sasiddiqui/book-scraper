@@ -9,8 +9,10 @@ from stores.sifatusafwa import SifatuSafwa
 from stores.kitaabun import Kitaabun
 from stores.kunuz import Kunuz
 from stores.buraq import Buraq                  
+from stores.ismaeel import IsmaeelScraper
+from stores.safinatulnajat import SafinatulNajat
 
-url = "https://www.sifatusafwa.com/en/adhkar-and-duah/al-adhkar-by-imam-an-nawawi.html"
+url = ""
 
 scraper = SifatuSafwa()
 
