@@ -1,5 +1,7 @@
 from pydantic import ValidationError
 from abc import ABC, abstractmethod
+
+import requests
 from book import Book
 import json
 import time
@@ -147,6 +149,13 @@ class AbstractBookScraper(ABC):
 
         with open(f"saved_progress/all_books_{use_cached_links}", 'rb') as file:
             self.all_books = pickle.load(file)
+    
+    def test_base_url(self):
+        response = requests.get(self.base_url)
+        if response.status_code == 200:
+            return True
+        else:
+            raise ScraperError(f'{self.name} scraper - Failed to reach {self.base_url}. Status code: {response.status}. Skipping scraper...')
 
     async def crawl_product_pages(self, initial_urls=list(), use_cached_links=None) -> list[dict]:
         print(f"Crawling {self.name}")
@@ -156,6 +165,9 @@ class AbstractBookScraper(ABC):
             self.get_cache(use_cached_links)
         else:
             self.urls_to_visit = [self.base_url] + initial_urls
+        
+        # ensure that the url is actual available.
+        self.test_base_url()
 
         self.count = 0
 
