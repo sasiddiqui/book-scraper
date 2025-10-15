@@ -199,6 +199,7 @@ class AbstractBookScraper(ABC):
                                 continue 
 
                             self.add_book(book_info)
+                            logger.log(f'SUCCESS - Added {book_info["title"]} to all books')
 
                         soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
                         
