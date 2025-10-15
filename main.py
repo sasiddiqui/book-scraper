@@ -10,6 +10,9 @@ from stores.albalagh import AlBalagh
 from stores.kunuz import Kunuz
 from stores.buraq import Buraq
 from upload import BookManager, StatusManager
+import logging
+
+logger = logging.getLogger('scraper')
 
 async def main():
 
@@ -55,15 +58,15 @@ async def main():
             except Exception as e:
 
                 time_to_crawl = datetime.now() - start_time
-                print(e)
+                logger.error(e)
                 status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
 
             else:
                 status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60, total_books=len(books))
 
-            print(f"Finished {scrape.name}")
+            logger.info(f"Finished {scrape.name}")
         
-        print("Sleeping for 1 day")
+        logger.info("Sleeping for 1 day")
         status.set_status("idle")
         await asyncio.sleep(86400)
 

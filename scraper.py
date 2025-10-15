@@ -192,7 +192,7 @@ class AbstractBookScraper(ABC):
                         # If it is a product page, extract book information
                         if self.is_product_url(url):
                             soup = BeautifulSoup(response, 'lxml', parse_only=self.strainer)
-                            logger.debug(f'Parsing {url}')
+                            logger.info(f'Parsing {url}')
                             try:
                                 book_info = self.extract_book_info(soup, url)
 
@@ -211,7 +211,7 @@ class AbstractBookScraper(ABC):
                                 continue 
 
                             self.add_book(book_info)
-                            logger.debug(f'SUCCESS - Added {book_info.title} to all books')
+                            logger.info(f'SUCCESS - Added {book_info.title} to all books')
 
                         soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
                         
@@ -221,7 +221,6 @@ class AbstractBookScraper(ABC):
                             absolute_link = urljoin(url, link)
                             if self.url_in_domain(absolute_link) and not self.ignore_url(absolute_link) and absolute_link not in self.visited_urls and absolute_link not in self.urls_to_visit:
                                 self.urls_to_visit.append(absolute_link)
-                                logger.debug(f'Adding {absolute_link} to urls to visit')
                         
                     self.count += 1
                     # if self.count % 25 == 0:
