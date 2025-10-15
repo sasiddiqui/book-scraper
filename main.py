@@ -63,9 +63,9 @@ async def main():
 
             print(f"Finished {scrape.name}")
         
-        print("Sleeping for 1 hour")
+        print("Sleeping for 1 day")
         status.set_status("idle")
-        await asyncio.sleep(3600)
+        await asyncio.sleep(86400)
 
 if __name__ == '__main__':
     # call main

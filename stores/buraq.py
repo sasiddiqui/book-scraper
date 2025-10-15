@@ -5,7 +5,7 @@ from scraper import AbstractBookScraper
 class Buraq(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://buraqbooks.com", "Buraq Books")
-        self.batch_size = 10
+        self.batch_size = 6
 
         self.headers["Accept-Language"] = "en-US,en;q=0.5"
     

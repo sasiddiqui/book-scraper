@@ -6,7 +6,7 @@ class AlBalagh(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://www.albalaghbooks.com", "Al-Balagh")
         self.strainer = SoupStrainer(["div", "h1"], class_=["span9 ty-product-block__left", "ty-product-block-title", "ty-product-img cm-preview-wrapper"])
-        self.batch_size = 50
+        self.batch_size = 20
     
     def ignore_url(self, url) -> bool:
         ig = [
