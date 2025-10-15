@@ -19,7 +19,7 @@ start_timestamp = str(datetime.datetime.now())
 
 
 logger = logging.getLogger('scraper')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -29,7 +29,7 @@ file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.WARNING)
+console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
@@ -199,7 +199,7 @@ class AbstractBookScraper(ABC):
                                 continue 
 
                             self.add_book(book_info)
-                            logger.log(f'SUCCESS - Added {book_info["title"]} to all books')
+                            logger.debug(f'SUCCESS - Added {book_info.title} to all books')
 
                         soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
                         

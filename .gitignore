@@ -6,3 +6,4 @@ saved_progress/*
 !logs/.gitkeep
 !scraper_cache/.gitkeep
 mongourl.txt
+__pycache__/*
