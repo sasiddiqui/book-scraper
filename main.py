@@ -58,13 +58,13 @@ async def main():
             except Exception as e:
 
                 time_to_crawl = datetime.now() - start_time
-                logger.error(e)
+                logger.error(f"Critical Error in {scrape.name}: {e}")
                 status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
 
             else:
                 status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60, total_books=len(books))
 
-            logger.info(f"Finished {scrape.name}")
+            logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes")
         
         logger.info("Sleeping for 1 day")
         status.set_status("idle")

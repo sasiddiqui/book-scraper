@@ -120,6 +120,7 @@ class AbstractBookScraper(ABC):
                     self.logger.error(f'Failed to retrieve the page. Status code: {response.status}')
                     self.error_count += 1
 
+                    # 503 is a temporary error, so we should retry
 
                     if response.status in [503, 429]:
                         raise ScraperError(f'{response.status} error on {url}')
@@ -155,7 +156,7 @@ class AbstractBookScraper(ABC):
         if response.status_code == 200:
             return True
         else:
-            raise ScraperError(f'{self.name} scraper - Failed to reach {self.base_url}. Status code: {response.status}. Skipping scraper...')
+            raise ScraperError(f'{self.name} scraper - Failed to reach {self.base_url}. Status code: {response.status_code}. Skipping scraper...')
 
     async def crawl_product_pages(self, initial_urls=list(), use_cached_links=None) -> list[dict]:
         print(f"Crawling {self.name}")
