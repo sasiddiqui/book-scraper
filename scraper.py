@@ -152,7 +152,7 @@ class AbstractBookScraper(ABC):
             self.all_books = pickle.load(file)
     
     def test_base_url(self):
-        response = requests.get(self.base_url)
+        response = requests.get(self.base_url, headers=self.headers, timeout=10)
         if response.status_code == 200:
             return True
         else:
