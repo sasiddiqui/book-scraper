@@ -7,3 +7,5 @@ saved_progress/*
 !scraper_cache/.gitkeep
 mongourl.txt
 __pycache__/*
+.pytest_cache/*
+.venv/*
