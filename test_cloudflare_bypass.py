@@ -98,14 +98,6 @@ def test_cloudflare_bypass(url, headless):
                 except Exception as e:
                     print(f"⚠️ Could not extract text content: {e}")
             
-            # Take a screenshot for debugging
-            try:
-                screenshot_path = "/Users/abdullahmohammad/Desktop/book-scraper/cloudflare_test_screenshot.png"
-                page.screenshot(path=screenshot_path)
-                print(f"📸 Screenshot saved to: {screenshot_path}")
-            except Exception as e:
-                print(f"⚠️ Could not save screenshot: {e}")
-                
     except Exception as e:
         print(f"❌ Error: {e}")
         print("💡 Make sure Camoufox is installed: pip install camoufox")
