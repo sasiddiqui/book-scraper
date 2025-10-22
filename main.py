@@ -1,4 +1,5 @@
 import asyncio
+import argparse
 from datetime import datetime
 from stores.zakariyya import ZakariyyaBooksScraper
 from stores.ismaeel import IsmaeelScraper
@@ -14,7 +15,20 @@ import logging
 
 logger = logging.getLogger('scraper')
 
-async def main():
+# Store name mapping to scraper classes
+STORE_MAPPING = {
+    'zakariyya': ZakariyyaBooksScraper,
+    'ismaeel': IsmaeelScraper,
+    'albadr': AlBadrBooksScraper,
+    'alhidaayah': AlHidayaah,
+    'qurtuba': Qurtuba,
+    'sifatusafwa': SifatuSafwa,
+    'albalagh': AlBalagh,
+    'kunuz': Kunuz,
+    'buraq': Buraq,
+}
+
+async def main(store_name=None, no_save=False):
 
     # await AlBadrBooksScraper().crawl_product_pages()
     # await IsmaeelScraper().crawl_product_pages()
@@ -27,17 +41,26 @@ async def main():
     # await Kitaabun().crawl_product_pages()
     # await Buraq().crawl_product_pages()
 
-    scrapers = [
-        ZakariyyaBooksScraper,
-        AlHidayaah,
-        Qurtuba,
-        IsmaeelScraper,
-        SifatuSafwa,
-        AlBadrBooksScraper,
-        Buraq,
-        AlBalagh,
-        Kunuz,      
-    ]
+    # Select scrapers based on store_name parameter
+    if store_name:
+        if store_name not in STORE_MAPPING:
+            logger.error(f"Unknown store: {store_name}. Available stores: {', '.join(STORE_MAPPING.keys())}")
+            return
+        scrapers = [STORE_MAPPING[store_name]]
+        logger.info(f"Running scraper for store: {store_name}")
+    else:
+        scrapers = [
+            ZakariyyaBooksScraper,
+            AlHidayaah,
+            Qurtuba,
+            IsmaeelScraper,
+            SifatuSafwa,
+            AlBadrBooksScraper,
+            Buraq,
+            AlBalagh,
+            Kunuz,      
+        ]
+        logger.info("Running all scrapers")
 
     db = BookManager()
     status = StatusManager(scrapers)
@@ -53,7 +76,8 @@ async def main():
                 time_to_crawl = datetime.now() - start_time
                 # ensures that some books were actually found 
                 if books:
-                    db.upload_books(scrape.name, books)
+                    if not no_save:
+                        db.upload_books(scrape.name, books)
 
             except Exception as e:
 
@@ -71,5 +95,10 @@ async def main():
         await asyncio.sleep(86400)
 
 if __name__ == '__main__':
-    # call main
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description='Book scraper with optional store selection')
+    parser.add_argument('--store', type=str, help='Run scraper for specific store only')
+    parser.add_argument('--no-save', action='store_true', help='Do not save books to database')
+    args = parser.parse_args()
+    
+    # call main with store argument
+    asyncio.run(main(args.store, args.no_save))

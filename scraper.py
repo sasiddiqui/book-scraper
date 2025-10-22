@@ -193,7 +193,6 @@ class AbstractBookScraper(ABC):
                         # If it is a product page, extract book information
                         if self.is_product_url(url):
                             soup = BeautifulSoup(response, 'lxml', parse_only=self.strainer)
-                            logger.info(f'Parsing {url}')
                             try:
                                 book_info = self.extract_book_info(soup, url)
 
