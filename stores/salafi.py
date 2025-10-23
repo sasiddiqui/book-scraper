@@ -34,7 +34,7 @@ class Salafi(AbstractBookScraper):
             return None
 
         try:
-            book_info["title"] = soup.find("meta", property="og:title")["content"].strip()
+            book_info["title"] = soup.find("meta", property="og:title")["content"].strip("- Salafi Bookstore UK").strip()
         except AttributeError:
             self.logger.warning(f"Could not find title for {url}")
             return None
