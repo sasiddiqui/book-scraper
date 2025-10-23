@@ -5,7 +5,7 @@ import re
 class Salafi(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://salafibookstore.com", "Salafi Books", convert_rate=1.33)
-        self.batch_size = 25
+        self.batch_size = 15
         self.test_urls = [
             "https://salafibookstore.com/product/taleeq-ala-meemiyyah-ibn-al-qayyim/",
             "https://salafibookstore.com/product/the-book-of-manners/",
@@ -14,7 +14,12 @@ class Salafi(AbstractBookScraper):
         ]
     
     def ignore_url(self, url):
-        return "#" in url
+        ig = [
+            "?add-to-cart=",
+            "#",
+
+        ]
+        return any(i in url for i in ig)
     
     def extract_book_info(self, soup: BeautifulSoup, url):
         book_info = {
