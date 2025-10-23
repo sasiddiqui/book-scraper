@@ -10,6 +10,7 @@ from stores.sifatusafwa import SifatuSafwa
 from stores.albalagh import AlBalagh
 from stores.kunuz import Kunuz
 from stores.buraq import Buraq
+from stores.salafi import Salafi
 from upload import BookManager, StatusManager
 import logging
 
@@ -26,6 +27,7 @@ STORE_MAPPING = {
     'albalagh': AlBalagh,
     'kunuz': Kunuz,
     'buraq': Buraq,
+    'salafi': Salafi,  
 }
 
 async def main(store_name=None, no_save=False):
@@ -59,6 +61,7 @@ async def main(store_name=None, no_save=False):
             Buraq,
             AlBalagh,
             Kunuz,      
+            Salafi,
         ]
         logger.info("Running all scrapers")
 

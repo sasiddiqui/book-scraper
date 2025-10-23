@@ -54,15 +54,6 @@ class ZakariyyaBooksScraper(AbstractBookScraper):
         
         return book_info
 
-    def find_product_links(self, soup):
-        links = []
-        for link in soup.find_all('a', href=True):
-            href = link['href']
-            absolute_url = urljoin(self.base_url, href)
-            if self.base_url in absolute_url and '/product/' in absolute_url:
-                links.append(absolute_url)
-        return links
-    
     def is_product_url(self, url):
         return url.startswith(self.base_url) and '/product/' in url
 

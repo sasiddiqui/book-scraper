@@ -7,6 +7,45 @@ Usage: python test_cloudflare_bypass.py --url <url>
 import time
 import argparse
 from camoufox.sync_api import Camoufox
+import requests
+
+def test_http_with_cookies(url, cookie_dict, headers):
+    """Test HTTP requests using cookies from browser session"""
+    
+    print(f"\n🌐 Testing HTTP requests with session cookies...")
+    
+    try:
+        # Test main URL
+        response = requests.get(url, cookies=cookie_dict, headers=headers, timeout=10)
+        print(f"✅ Main URL HTTP Request successful!")
+        print(f"📊 Status Code: {response.status_code}")
+        print(f"📏 Content Length: {len(response.content)} bytes")
+        
+        # Check if we're still blocked
+        if "just a moment" in response.text.lower() or "cloudflare" in response.text.lower() and response.status_code != 200:
+            print("❌ Still blocked by Cloudflare in HTTP request")
+            return False
+        else:
+            print("✅ Successfully bypassed Cloudflare with HTTP request!")
+            
+            # Extract page title
+            if "<title>" in response.text.lower():
+                title_start = response.text.lower().find("<title>")
+                title_end = response.text.lower().find("</title>")
+                if title_start != -1 and title_end != -1:
+                    title = response.text[title_start+7:title_end]
+                    print(f"📄 Page title: {title}")
+            
+            # Save response for inspection
+            with open("/Users/abdullahmohammad/Desktop/book-scraper/http_response.html", "w", encoding="utf-8") as f:
+                f.write(response.text)
+            print("💾 Response saved to http_response.html")
+            
+            return True
+            
+    except requests.exceptions.RequestException as e:
+        print(f"❌ HTTP request failed: {e}")
+        return False
 
 def test_cloudflare_bypass(url, headless):
     """Test if we can bypass Cloudflare protection on the given URL"""
@@ -135,6 +174,48 @@ def test_with_turnstile_handling(url, headless):
             print(f"📄 Final title: {page.title()}")
             print(f"🔗 Final URL: {page.url}")
             
+            # Extract cookies and headers for normal HTTP requests
+            print("\n🍪 Extracting session data for HTTP requests...")
+            
+            # Get cookies from the browser context
+            cookies = page.context.cookies()
+            print(f"📋 Found {len(cookies)} cookies")
+            
+            # Convert cookies to requests format
+            cookie_dict = {}
+            for cookie in cookies:
+                cookie_dict[cookie['name']] = cookie['value']
+                print(f"  🍪 {cookie['name']}: {cookie['value'][:50]}...")
+            
+            # Get headers (we'll use common browser headers)
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:143.0) Gecko/20100101 Firefox/143.0',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Cookie': "; ".join([f"{cookie['name']}={cookie['value']}" for cookie in cookies]),
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
+                'Sec-GPC': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Priority': 'u=0, i',
+                'TE': 'trailers'
+            }
+            print(headers)
+            
+            # Test HTTP request with cookies using the dedicated function
+            http_success = test_http_with_cookies(page.url, cookie_dict, headers)
+            if not http_success:
+                print("❌ Unable to bypass Cloudflare using cookies")
+                return False
+            else:
+                print("✅ Successfully bypassed Cloudflare using cookies")
+                return True
+            
+
+            
     except Exception as e:
         print(f"❌ Error in Turnstile test: {e}")
 
@@ -154,7 +235,7 @@ if __name__ == "__main__":
     print(f"🎯 Target URL: {args.url}")
     print("=" * 50)
     
-    # Run tests based on selection
+    # Run browser-based tests
     test_cloudflare_bypass(args.url, args.head)
     test_with_turnstile_handling(args.url, args.head)
     

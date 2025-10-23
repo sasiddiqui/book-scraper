@@ -16,6 +16,9 @@ import pickle
 class ScraperError(Exception):
     pass
 
+class TestError(Exception):
+    pass
+
 start_timestamp = str(datetime.datetime.now())
 
 
@@ -71,9 +74,10 @@ class AbstractBookScraper(ABC):
 
         # converting from GBP to USD
         self.convert_rate = convert_rate
+        self.test_urls = [] # urls that should cover all possible cases
 
     @abstractmethod
-    def extract_book_info(self, soup, url) -> Book | None:
+    def extract_book_info(self, soup: BeautifulSoup, url) -> Book | None:
         pass
 
     @abstractmethod
@@ -81,9 +85,8 @@ class AbstractBookScraper(ABC):
         pass
 
 
-    @abstractmethod
     def ignore_url(self, url) -> bool:
-        pass
+        return False
 
     def url_in_domain(self, url):
         return url.startswith(self.base_url)
@@ -212,7 +215,7 @@ class AbstractBookScraper(ABC):
 
                             self.add_book(book_info)
                             if book_info is not None:
-                                logger.info(f'SUCCESS - Added {book_info.title} to all books')
+                                logger.info(f'SUCCESS - Added {book_info.title} to all books - {url}')
 
                         soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
                         
