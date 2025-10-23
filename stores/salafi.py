@@ -28,8 +28,9 @@ class Salafi(AbstractBookScraper):
         }
 
         # we only want the books not other stuff
-        lifestyle = soup.find("nav", class_="woocommerce-breadcrumb").text.strip()
-        if "Lifestyle" in lifestyle:
+        breadcrumb = soup.find("nav", class_="woocommerce-breadcrumb").text.strip().lower()
+        if "books" not in breadcrumb:
+            self.logger.info(f"Skipping {url} because it is not a book")
             return None
 
         try:
