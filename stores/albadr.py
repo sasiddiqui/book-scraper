@@ -5,6 +5,7 @@ from scraper import AbstractBookScraper
 class AlBadrBooksScraper(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://albadr.co.uk/", "Al-Badr", convert_rate=1.3)
+        self.batch_size = 5
     
     def ignore_url(self, url) -> bool:
         ig = [
