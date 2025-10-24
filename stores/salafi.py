@@ -5,7 +5,7 @@ import re
 class Salafi(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://salafibookstore.com", "Salafi Books", convert_rate=1.33)
-        self.batch_size = 15
+        self.batch_size = 8
         self.test_urls = [
             "https://salafibookstore.com/product/taleeq-ala-meemiyyah-ibn-al-qayyim/",
             "https://salafibookstore.com/product/the-book-of-manners/",
