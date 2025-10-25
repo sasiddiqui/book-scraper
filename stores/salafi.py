@@ -2,6 +2,8 @@ import json
 from scraper import AbstractBookScraper
 from bs4 import BeautifulSoup
 import re
+from bs4 import SoupStrainer
+
 class Salafi(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://salafibookstore.com", "Salafi Books", convert_rate=1.33)
@@ -12,6 +14,8 @@ class Salafi(AbstractBookScraper):
             "https://salafibookstore.com/product/muntaki-min-fataawa-fadheelah-al-shaykh-saalih-bin-fawzaan-bin-abdullah-al-fawzaan/",
 
         ]
+
+        self.strainer = SoupStrainer(["meta", "nav", "h1", "bdi", "p", "button", "img"])
     
     def ignore_url(self, url):
         ig = [

@@ -120,12 +120,12 @@ class AbstractBookScraper(ABC):
                     content = await response.content.read()
                     return url, content
                 else:
-                    self.logger.error(f'Failed to retrieve the page. Status code: {response.status}')
-                    self.error_count += 1
+                    self.logger.error(f'Failed to retrieve the page at {url}. Status code: {response.status}')
 
                     # 503 is a temporary error, so we should retry
 
-                    if response.status in [503, 429]:
+                    if response.status in [503, 429, 301]:
+                        self.error_count += 1
                         raise ScraperError(f'{response.status} error on {url}')
                     
 

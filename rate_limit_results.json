@@ -1,0 +1,71 @@
+{
+  "url": "https://www.zakariyyabooks.com/",
+  "test_timestamp": "2025-10-24 12:43:33",
+  "max_successful_batch_size": 100,
+  "binary_search_results": [
+    {
+      "batch_size": 50,
+      "success_count": 50,
+      "failure_count": 0,
+      "blocked": false,
+      "avg_response_time": 0.18155598163604736,
+      "error_codes": {},
+      "test_duration": 5.112573862075806
+    },
+    {
+      "batch_size": 75,
+      "success_count": 75,
+      "failure_count": 0,
+      "blocked": false,
+      "avg_response_time": 0.1751202964782715,
+      "error_codes": {},
+      "test_duration": 7.633980989456177
+    },
+    {
+      "batch_size": 88,
+      "success_count": 88,
+      "failure_count": 0,
+      "blocked": false,
+      "avg_response_time": 0.17059972069480203,
+      "error_codes": {},
+      "test_duration": 8.946964979171753
+    },
+    {
+      "batch_size": 94,
+      "success_count": 94,
+      "failure_count": 0,
+      "blocked": false,
+      "avg_response_time": 0.1942392942753244,
+      "error_codes": {},
+      "test_duration": 9.540931701660156
+    },
+    {
+      "batch_size": 97,
+      "success_count": 97,
+      "failure_count": 0,
+      "blocked": false,
+      "avg_response_time": 0.18672974330862774,
+      "error_codes": {},
+      "test_duration": 10.153923749923706
+    },
+    {
+      "batch_size": 99,
+      "success_count": 99,
+      "failure_count": 0,
+      "blocked": false,
+      "avg_response_time": 0.18460035083269832,
+      "error_codes": {},
+      "test_duration": 10.051480770111084
+    },
+    {
+      "batch_size": 100,
+      "success_count": 100,
+      "failure_count": 0,
+      "blocked": false,
+      "avg_response_time": 0.1838677215576172,
+      "error_codes": {},
+      "test_duration": 10.161750793457031
+    }
+  ],
+  "pattern_results": {}
+}
