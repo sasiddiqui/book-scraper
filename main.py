@@ -1,6 +1,7 @@
 import asyncio
 import argparse
 from datetime import datetime
+from stores.maktabahalhidayah import MaktabahAlHidayah
 from stores.zakariyya import ZakariyyaBooksScraper
 from stores.ismaeel import IsmaeelScraper
 from stores.albadr import AlBadrBooksScraper
@@ -13,6 +14,8 @@ from stores.buraq import Buraq
 from stores.salafi import Salafi
 from upload import BookManager, StatusManager
 import logging
+from dotenv import load_dotenv
+
 
 logger = logging.getLogger('scraper')
 
@@ -28,6 +31,7 @@ STORE_MAPPING = {
     'kunuz': Kunuz,
     'buraq': Buraq,
     'salafi': Salafi,  
+    'maktabahalhidayah': MaktabahAlHidayah,
 }
 
 async def main(store_name=None, no_save=False):
@@ -62,6 +66,7 @@ async def main(store_name=None, no_save=False):
             AlBalagh,
             Kunuz,      
             Salafi,
+            MaktabahAlHidayah,
         ]
         logger.info("Running all scrapers")
 
@@ -98,6 +103,9 @@ async def main(store_name=None, no_save=False):
         await asyncio.sleep(86400)
 
 if __name__ == '__main__':
+    if not load_dotenv():
+        raise ValueError("No .env file found")
+
     parser = argparse.ArgumentParser(description='Book scraper with optional store selection')
     parser.add_argument('--store', type=str, help='Run scraper for specific store only')
     parser.add_argument('--no-save', action='store_true', help='Do not save books to database')

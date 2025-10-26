@@ -16,6 +16,7 @@ cloudscraper==1.2.71
 Cython==3.1.5
 decorator==5.2.1
 dnspython==2.8.0
+dotenv==0.9.9
 frozenlist==1.8.0
 greenlet==3.2.4
 h11==0.16.0
@@ -44,6 +45,7 @@ pyparsing==3.2.5
 PySocks==1.7.1
 pytest==8.4.2
 pytest-asyncio==1.2.0
+python-dotenv==1.2.1
 PyYAML==6.0.3
 requests==2.32.5
 requests-cache==1.2.1
