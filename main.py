@@ -76,34 +76,32 @@ async def main(store_name=None, no_save=False):
     db = BookManager()
     status = StatusManager(scrapers)
 
-    while True:
-        for scraper in scrapers:
-            try:
-                scrape = scraper()
-                status.set_status(scrape.name)
+    for scraper in scrapers:
+        try:
+            scrape = scraper()
+            status.set_status(scrape.name)
 
-                start_time = datetime.now()
-                books = await scrape.crawl_product_pages()
-                time_to_crawl = datetime.now() - start_time
-                # ensures that some books were actually found 
-                if books:
-                    if not no_save:
-                        db.upload_books(scrape.name, books)
+            start_time = datetime.now()
+            books = await scrape.crawl_product_pages()
+            time_to_crawl = datetime.now() - start_time
+            # ensures that some books were actually found 
+            if books:
+                if not no_save:
+                    db.upload_books(scrape.name, books)
 
-            except Exception as e:
+        except Exception as e:
 
-                time_to_crawl = datetime.now() - start_time
-                logger.error(f"Critical Error in {scrape.name}: {e}")
-                status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
+            time_to_crawl = datetime.now() - start_time
+            logger.error(f"Critical Error in {scrape.name}: {e}")
+            status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
 
-            else:
-                status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60, total_books=len(books))
+        else:
+            status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60, total_books=len(books))
 
-            logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes")
-        
-        logger.info("Sleeping for 1 day")
-        status.set_status("idle")
-        await asyncio.sleep(86400)
+        logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes")
+    
+    logger.info("All scrapers finished. Exiting...")
+    exit(0)
 
 if __name__ == '__main__':
     if not load_dotenv():
