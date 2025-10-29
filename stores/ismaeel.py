@@ -51,7 +51,7 @@ class IsmaeelScraper(AbstractBookScraper):
 
         try:
             book_info["image"] = soup.find("img", class_="wp-post-image")["src"]
-            book_info["instock"] = soup.find("meta", attrs={"name" : "twitter:data2"})["content"].strip() == "In stock"
+            book_info["instock"] = "in stock" in soup.find("meta", attrs={"name" : "twitter:data2"})["content"].strip().lower()
             try:
                 book_info["publisher"] = soup.find("th", text="الناشر").find_next("a").text.strip()    
             except AttributeError:
