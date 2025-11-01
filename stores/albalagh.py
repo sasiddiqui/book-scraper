@@ -47,6 +47,11 @@ class AlBalagh(AbstractBookScraper):
             self.logger.error(f"Could not find author for {url}")
             
         try:
+            book_info["publisher"] = soup.find("span", class_="ty-product-feature__label", text=re.compile("Publisher")).find_next("em").text.strip()
+        except Exception as e:
+            self.logger.error(f"Could not find publisher for {url}")
+            
+        try:
             book_info["price"] = float(soup.find("div", class_="ty-product-block__price-actual").text.strip().replace("$", ""))
             if book_info["price"]:
                 book_info["price"] = float(book_info["price"])
@@ -64,5 +69,6 @@ class AlBalagh(AbstractBookScraper):
             book_info["instock"] = soup.find("span", class_="ty-qty-in-stock") is not None
         except Exception as e:
             self.logger.error(f"Could not find instock for {url}")
+        
 
         return book_info
