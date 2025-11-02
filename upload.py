@@ -1,6 +1,7 @@
 from book import Book
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+import re
 
 uri = open("mongourl.txt").read().strip()
 
@@ -13,13 +14,15 @@ db = client["data"]
 
 def sanitize_arabic_text(text: str | None) -> str | None:
     """
-    Normalizes Arabic text by replacing hamza variants with regular alif (ا).
-    This helps with search matching when users don't type hamzas correctly.
+    Normalizes Arabic text 
     
     Replaces:
     - أ (alif with hamza above) → ا
     - إ (alif with hamza below) → ا
     - آ (alif with madda) → ا
+    - ؤ (waw with hamza above) → و
+    - ال (when at the beginning of a word) → null
+    - remove harkaat
     """
     if not text:
         return text
@@ -28,13 +31,16 @@ def sanitize_arabic_text(text: str | None) -> str | None:
     normalized = text.replace('أ', 'ا')  # alif with hamza above
     normalized = normalized.replace('إ', 'ا')  # alif with hamza below
     normalized = normalized.replace('آ', 'ا')  # alif with madda
+    normalized = normalized.replace('ؤ', 'و')  # waw with hamza above
+    normalized = normalized.replace('ئ', 'ي')  # ya with hamza
+    normalized = normalized.replace("ٱ", "ا") # hamzah al wasl
+    normalized = re.sub(r'[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]', '', normalized)
 
-    if normalized != text:
-        print(f"Normalized {text} to {normalized}")
-    
-    
-    return normalized
+    # remove ال when at the beggining of a word using a regex
+    normalized = re.sub(r'\bال', '', normalized)
 
+    
+    return normalized.strip()
 
 
 class StatusManager:
