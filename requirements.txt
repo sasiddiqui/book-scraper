@@ -24,6 +24,7 @@ idna==3.11
 iniconfig==2.1.0
 language-tags==1.2.0
 lxml==6.0.2
+matplotlib==3.9.0
 multidict==6.7.0
 numpy==2.3.4
 orjson==3.11.3
