@@ -13,5 +13,9 @@ class Book(BaseModel):
     author: Optional[str] = None
     description: Optional[str] = None
 
+    titleNormalized: Optional[str] = None
+    authorNormalized: Optional[str] = None
+    publisherNormalized: Optional[str] = None
+
     def __str__(self):
         return f"{self.title} by {self.author} - ${self.price}"

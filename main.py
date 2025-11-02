@@ -104,6 +104,8 @@ async def main(store_name=None, no_save=False):
 
         logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes")
     
+    status.set_status("idle")
+    
     logger.info("All scrapers finished. Exiting...")
     exit(0)
 

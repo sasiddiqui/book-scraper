@@ -11,6 +11,31 @@ print("Pinged your deployment. You successfully connected to MongoDB!")
 db = client["data"]
 
 
+def sanitize_arabic_text(text: str | None) -> str | None:
+    """
+    Normalizes Arabic text by replacing hamza variants with regular alif (ا).
+    This helps with search matching when users don't type hamzas correctly.
+    
+    Replaces:
+    - أ (alif with hamza above) → ا
+    - إ (alif with hamza below) → ا
+    - آ (alif with madda) → ا
+    """
+    if not text:
+        return text
+    
+    # Replace hamza variants with regular alif
+    normalized = text.replace('أ', 'ا')  # alif with hamza above
+    normalized = normalized.replace('إ', 'ا')  # alif with hamza below
+    normalized = normalized.replace('آ', 'ا')  # alif with madda
+
+    if normalized != text:
+        print(f"Normalized {text} to {normalized}")
+    
+    
+    return normalized
+
+
 
 class StatusManager:
     """
@@ -61,8 +86,29 @@ class BookManager:
     def __init__(self):
         self.books = db["books"]
 
-    def upload_books(self, source: str, books: list[Book]) -> None:
-        """delete all books for this source then insert new ones"""
+    def upload_books(self, source: str, books: list[dict]) -> None:
+        """
+        Delete all books for this source then insert new ones.
+        Adds normalized fields (titleNormalized, authorNormalized) for hamza-agnostic search.
+        """
+        
+        # Convert books to dicts and add normalized fields
+        books_dicts = []
+        for book in books:
+            
+            # Add normalized fields for search (without hamzas)
+            book['titleNormalized'] = sanitize_arabic_text(book['title'])
 
+            book['authorNormalized'] = None
+            book['publisherNormalized'] = None
+
+            if "author" in book and book['author']:
+                book['authorNormalized'] = sanitize_arabic_text(book['author'])
+            
+            if "publisher" in book and book['publisher']:
+                book['publisherNormalized'] = sanitize_arabic_text(book['publisher'])
+            
+            books_dicts.append(book)
+        
         self.books.delete_many({"source": source})
-        self.books.insert_many(books)
+        self.books.insert_many(books_dicts)
