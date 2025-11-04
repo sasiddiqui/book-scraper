@@ -163,7 +163,7 @@ class AbstractBookScraper(ABC):
             raise ScraperError(f'{self.name} scraper - Failed to reach {self.base_url}. Status code: {response.status_code}. Skipping scraper...')
 
     async def crawl_product_pages(self, initial_urls=list(), use_cached_links=None) -> list[dict]:
-        print(f"Crawling {self.name}")
+        self.logger.info(f"Crawling {self.name}")
 
         start = time.time()
         if use_cached_links:
@@ -235,8 +235,6 @@ class AbstractBookScraper(ABC):
                             
                         # self.write_to_json()
 
-            # Write all extracted book information to a CSV file
-            self.write_to_json()
-            print(f"Finished crawling {self.name} in {time.time() - start} seconds")
+            self.logger.info(f"Finished crawling {self.name} in {time.time() - start} seconds")
             return self.all_books
 
