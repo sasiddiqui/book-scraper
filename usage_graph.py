@@ -7,6 +7,7 @@ Groups data by hour and optionally by type.
 import os
 from datetime import datetime
 from collections import defaultdict
+from urllib.parse import urlparse
 import matplotlib.pyplot as plt
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -49,7 +50,7 @@ def parse_timestamp(timestamp_str):
 def get_usage_data(db):
     """Fetch all documents from the usage collection"""
     collection = db['usage']
-    documents = list(collection.find({}, {'type': 1, 'timestamp': 1, 'ip': 1}))
+    documents = list(collection.find({}, {'type': 1, 'timestamp': 1, 'ip': 1, 'bookSource': 1}))
     print(f"Found {len(documents)} documents in usage collection")
     return documents
 
@@ -91,6 +92,78 @@ def group_by_hour(documents):
         all_unique_ips.update(ips_set)
     
     return hourly_data, hourly_total, hourly_unique_user_count, all_unique_ips
+
+
+def get_book_clicks_by_store(documents):
+    """Count book clicks per store using bookSource field"""
+    store_clicks = defaultdict(int)
+    
+    for doc in documents:
+        # Only count documents where type is 'book_clicked' and has bookSource
+        if doc.get('type') == 'book_clicked' and 'bookSource' in doc and doc['bookSource']:
+            store = doc['bookSource']
+            # Clean up the store name
+            if store:
+                # Remove query params if any
+                store = store.split('?')[0]
+                # If it's a URL, extract domain or last path segment
+                if store.startswith('http://') or store.startswith('https://'):
+                    parsed = urlparse(store)
+                    # Use domain name, removing www. if present
+                    store = parsed.netloc.replace('www.', '').split(':')[0]
+                    if not store:
+                        # Fallback to last path segment
+                        store = parsed.path.strip('/').split('/')[-1] if parsed.path else 'Unknown'
+                else:
+                    # Not a URL, use as-is
+                    store = store.split('/')[-1] if '/' in store else store
+            else:
+                store = 'Unknown'
+            
+            store_clicks[store] += 1
+    
+    return store_clicks
+
+
+def create_store_clicks_chart(store_clicks):
+    """Create a bar chart showing book clicks per store"""
+    if not store_clicks:
+        print("No book click data to display")
+        return
+    
+    # Sort stores by click count (descending)
+    sorted_stores = sorted(store_clicks.items(), key=lambda x: x[1], reverse=True)
+    stores = [store for store, _ in sorted_stores]
+    counts = [count for _, count in sorted_stores]
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(14, 8))
+    
+    # Use a nice color gradient based on count
+    colors = plt.cm.viridis([count / max(counts) for count in counts])
+    
+    # Create bar chart
+    bars = ax.bar(range(len(stores)), counts, color=colors, alpha=0.8, edgecolor='black', linewidth=1)
+    
+    # Add value labels on bars
+    for i, (bar, count) in enumerate(zip(bars, counts)):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height,
+               f'{count}',
+               ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    ax.set_xlabel('Store', fontsize=12)
+    ax.set_ylabel('Book Clicks', fontsize=12)
+    ax.set_title('Book Clicks by Store', fontsize=14, fontweight='bold')
+    ax.set_xticks(range(len(stores)))
+    ax.set_xticklabels(stores, rotation=45, ha='right')
+    ax.grid(True, alpha=0.3, axis='y', linestyle=':', linewidth=0.8)
+    ax.tick_params(labelsize=10)
+    
+    plt.tight_layout()
+    
+    # Display the graph
+    plt.show()
 
 
 def create_graph(hourly_data, hourly_total, hourly_unique_user_count):
@@ -232,9 +305,24 @@ def main():
         # Print summary
         print_summary(hourly_data, hourly_total, hourly_unique_user_count, all_unique_ips)
         
-        # Create and display graph
-        print("\nGenerating graph...")
+        # Get book clicks by store
+        print("\nAnalyzing book clicks by store...")
+        store_clicks = get_book_clicks_by_store(documents)
+        
+        # Print store clicks summary
+        if store_clicks:
+            print(f"\nFound {len(store_clicks)} stores with book clicks")
+            print("\nTop stores by clicks:")
+            sorted_stores = sorted(store_clicks.items(), key=lambda x: x[1], reverse=True)
+            for store, count in sorted_stores[:10]:  # Show top 10
+                print(f"  {store}: {count} clicks")
+        
+        # Create and display graphs
+        print("\nGenerating graphs...")
         create_graph(hourly_data, hourly_total, hourly_unique_user_count)
+        
+        if store_clicks:
+            create_store_clicks_chart(store_clicks)
         
     except Exception as e:
         print(f"Error: {e}")

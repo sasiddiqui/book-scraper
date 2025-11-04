@@ -114,6 +114,7 @@ class AbstractBookScraper(ABC):
 
 
     async def fetch_page(self, session: ClientSession, url: str) -> tuple[str, str]:
+        logger.info(f"Fetching page: {url}")
         try:
             async with session.get(url, headers=self.headers, timeout=20) as response:
                 if response.status == 200:

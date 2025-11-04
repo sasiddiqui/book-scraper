@@ -14,7 +14,7 @@ from stores.buraq import Buraq
 from stores.salafi import Salafi
 from stores.ummahspot import UmmahSpot
 from stores.daralmuttaqin import DarAlMuttaqin
-
+from stores.kastntinya import Kastntinya    
 from upload import BookManager, StatusManager
 import logging
 from dotenv import load_dotenv
@@ -37,6 +37,7 @@ STORE_MAPPING = {
     'maktabahalhidayah': MaktabahAlHidayah,
     'ummahspot': UmmahSpot,
     'daralmuttaqin': DarAlMuttaqin,
+    'kastntinya': Kastntinya,
 }
 
 async def main(store_name=None, no_save=False):
@@ -74,6 +75,7 @@ async def main(store_name=None, no_save=False):
             MaktabahAlHidayah,
             UmmahSpot,
             DarAlMuttaqin,
+            Kastntinya,
         ]
         logger.info("Running all scrapers")
 
