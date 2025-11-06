@@ -5,7 +5,7 @@ Groups data by hour and optionally by type.
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from urllib.parse import urlparse
 import matplotlib.pyplot as plt
@@ -34,24 +34,40 @@ def connect_to_db():
 
 
 def parse_timestamp(timestamp_str):
-    """Parse timestamp string to datetime object.
+    """Parse timestamp string to datetime object and convert from UTC to local time.
     Expected format: 'YYYY-MM-DDTHH:MM' (from .slice(0, 16))
     """
     try:
-        return datetime.fromisoformat(timestamp_str)
+        # Parse as UTC (since MongoDB stores timestamps in UTC)
+        dt_utc = datetime.fromisoformat(timestamp_str).replace(tzinfo=timezone.utc)
+        # Convert to local time
+        dt_local = dt_utc.astimezone()
+        return dt_local
     except ValueError:
         # Try parsing with different formats if needed
         try:
-            return datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M')
+            dt_utc = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
+            dt_local = dt_utc.astimezone()
+            return dt_local
         except ValueError:
-            return datetime.strptime(timestamp_str[:16], '%Y-%m-%dT%H:%M')
+            dt_utc = datetime.strptime(timestamp_str[:16], '%Y-%m-%dT%H:%M').replace(tzinfo=timezone.utc)
+            dt_local = dt_utc.astimezone()
+            return dt_local
 
 
-def get_usage_data(db):
-    """Fetch all documents from the usage collection"""
+def get_usage_data(db, hours=24):
+    """Fetch documents from the usage collection within the last N hours"""
     collection = db['usage']
-    documents = list(collection.find({}, {'type': 1, 'timestamp': 1, 'ip': 1, 'bookSource': 1}))
-    print(f"Found {len(documents)} documents in usage collection")
+    
+    # Calculate cutoff time (24 hours ago in UTC)
+    cutoff_utc = datetime.now(timezone.utc) - timedelta(hours=hours)
+    # Format as ISO string for MongoDB query (without timezone info, MongoDB treats as UTC)
+    cutoff_str = cutoff_utc.strftime('%Y-%m-%dT%H:%M')
+    
+    # Query for documents with timestamp >= cutoff
+    query = {'timestamp': {'$gte': cutoff_str}}
+    documents = list(collection.find(query, {'type': 1, 'timestamp': 1, 'ip': 1, 'bookSource': 1}))
+    print(f"Found {len(documents)} documents in usage collection from the last {hours} hours")
     return documents
 
 
@@ -208,11 +224,21 @@ def create_graph(hourly_data, hourly_total, hourly_unique_user_count):
                markersize=7, label='Unique Users (by IP)', color='#FF006E', 
                linestyle='--', alpha=0.9)
         
-        ax.set_xlabel('Hour', fontsize=12)
+        ax.set_xlabel('Hour (Local Time)', fontsize=12)
         ax.set_ylabel('Usage Count', fontsize=12)
-        ax.set_title('Usage Per Hour by Type & Unique Users', fontsize=14, fontweight='bold')
+        ax.set_title('Usage Per Hour by Type & Unique Users (Last 24 Hours)', fontsize=14, fontweight='bold')
         ax.set_xticks(range(len(hours)))
-        ax.set_xticklabels([h.split()[1] if ' ' in h else h[-5:] for h in hours], rotation=45, ha='right')
+        # Format labels: show "MM-DD HH:00" for better readability
+        hour_labels = []
+        for h in hours:
+            if ' ' in h:
+                date_part, time_part = h.split()
+                # Show as "MM-DD HH:00"
+                date_obj = datetime.strptime(date_part, '%Y-%m-%d')
+                hour_labels.append(f"{date_obj.strftime('%m-%d')} {time_part}")
+            else:
+                hour_labels.append(h[-5:] if len(h) >= 5 else h)
+        ax.set_xticklabels(hour_labels, rotation=45, ha='right')
         ax.legend(loc='upper left', fontsize=10, framealpha=0.9)
         ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.8)
         ax.tick_params(labelsize=10)
@@ -228,11 +254,21 @@ def create_graph(hourly_data, hourly_total, hourly_unique_user_count):
                markersize=7, label='Unique Users (by IP)', color='#FF006E', 
                linestyle='--', alpha=0.9)
         
-        ax.set_xlabel('Hour', fontsize=12)
+        ax.set_xlabel('Hour (Local Time)', fontsize=12)
         ax.set_ylabel('Usage Count', fontsize=12)
-        ax.set_title('Usage Per Hour', fontsize=14, fontweight='bold')
+        ax.set_title('Usage Per Hour (Last 24 Hours)', fontsize=14, fontweight='bold')
         ax.set_xticks(range(len(hours)))
-        ax.set_xticklabels([h.split()[1] if ' ' in h else h[-5:] for h in hours], rotation=45, ha='right')
+        # Format labels: show "MM-DD HH:00" for better readability
+        hour_labels = []
+        for h in hours:
+            if ' ' in h:
+                date_part, time_part = h.split()
+                # Show as "MM-DD HH:00"
+                date_obj = datetime.strptime(date_part, '%Y-%m-%d')
+                hour_labels.append(f"{date_obj.strftime('%m-%d')} {time_part}")
+            else:
+                hour_labels.append(h[-5:] if len(h) >= 5 else h)
+        ax.set_xticklabels(hour_labels, rotation=45, ha='right')
         ax.legend(loc='upper left', fontsize=10, framealpha=0.9)
         ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.8)
         ax.tick_params(labelsize=10)
@@ -246,7 +282,7 @@ def create_graph(hourly_data, hourly_total, hourly_unique_user_count):
 def print_summary(hourly_data, hourly_total, hourly_unique_user_count, all_unique_ips):
     """Print a summary of the data"""
     print("\n" + "="*60)
-    print("Usage Summary")
+    print("Usage Summary (Last 24 Hours - Local Time)")
     print("="*60)
     
     sorted_hours = sorted(hourly_total.keys())
@@ -290,9 +326,9 @@ def main():
         db = connect_to_db()
         print("Connected successfully!")
         
-        # Fetch data
-        print("\nFetching usage data...")
-        documents = get_usage_data(db)
+        # Fetch data (last 24 hours by default)
+        print("\nFetching usage data from the last 24 hours...")
+        documents = get_usage_data(db, hours=24)
         
         if not documents:
             print("No documents found in usage collection")

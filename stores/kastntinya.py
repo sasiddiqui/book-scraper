@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 class Kastntinya(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://kastntinya.com", "Kastntinya")
+        self.batch_size = 25
 
     def ignore_url(self, url) -> bool:
         ig = [

@@ -66,8 +66,20 @@ class AbstractBookScraper(ABC):
         self.batch_size = 20
         self.strainer = SoupStrainer()
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
         }
+        self.batch_delay = 0  # Delay between batches in seconds
 
         self.error_count = 0
         self.ERROR_THRESHOLD = 20
@@ -113,10 +125,16 @@ class AbstractBookScraper(ABC):
             self.all_books.append(book_info.model_dump(exclude_none=True))
 
 
-    async def fetch_page(self, session: ClientSession, url: str) -> tuple[str, str]:
+    async def fetch_page(self, session: ClientSession, url: str, referer: str = None) -> tuple[str, str]:
         logger.info(f"Fetching page: {url}")
         try:
-            async with session.get(url, headers=self.headers, timeout=20) as response:
+            # Add referer header if provided
+            headers = self.headers.copy()
+            if referer:
+                headers['Referer'] = referer
+                headers['Sec-Fetch-Site'] = 'same-origin'
+            
+            async with session.get(url, headers=headers, timeout=20) as response:
                 if response.status == 200:
                     content = await response.content.read()
                     return url, content
@@ -177,21 +195,41 @@ class AbstractBookScraper(ABC):
         self.count = 0
 
         async with aiohttp.ClientSession() as session:
+            last_url = self.base_url  # Track last URL for referer header
             while self.urls_to_visit:
                 tasks = []
                 # Process URLs in batches
                 # create a batch of URLs to visit
+                batch_urls = []
                 for _ in range(min(self.batch_size, len(self.urls_to_visit))):
                     url = self.urls_to_visit.pop()
                     if url in self.visited_urls:
                         continue
                     self.visited_urls.add(url)
-                    task = asyncio.create_task(self.fetch_page(session, url))
+                    batch_urls.append(url)
+                    # Use base_url as referer for first batch, last_url for subsequent batches
+                    referer = last_url if self.count > 0 else self.base_url
+                    task = asyncio.create_task(self.fetch_page(session, url, referer))
                     tasks.append(task)
 
                 # wait for all tasks to complete
-                responses = await asyncio.gather(*tasks)
-                for url, response in responses:
+                responses = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # Update last_url to the first URL from this batch for next referer
+                if batch_urls:
+                    last_url = batch_urls[0]
+                
+                # Process responses
+                for url, result in zip(batch_urls, responses):
+                    # Skip if result is an exception
+                    if isinstance(result, Exception):
+                        self.logger.error(f'Exception while fetching {url}: {result}')
+                        self.count += 1
+                        continue
+                    
+                    # Unpack the tuple (url, content) returned by fetch_page
+                    fetch_url, response = result
+                    
                     if response:
                         soup = None
                         # If it is a product page, extract book information
@@ -226,8 +264,12 @@ class AbstractBookScraper(ABC):
                             absolute_link = urljoin(url, link)
                             if self.url_in_domain(absolute_link) and not self.ignore_url(absolute_link) and absolute_link not in self.visited_urls and absolute_link not in self.urls_to_visit:
                                 self.urls_to_visit.append(absolute_link)
-                        
+                    
                     self.count += 1
+                
+                # Add delay between batches to avoid rate limiting
+                if self.urls_to_visit and self.batch_delay > 0:
+                    await asyncio.sleep(self.batch_delay)
                     # if self.count % 25 == 0:
                         # self.save_lines_to_file(self.urls_to_visit, f"saved_progress/urls_to_visit_{start_timestamp}")
                         # self.save_lines_to_file(list(self.visited_urls), f"saved_progress/visited_urls_{start_timestamp}")
