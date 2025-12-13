@@ -17,6 +17,7 @@ from stores.daralmuttaqin import DarAlMuttaqin
 from stores.kastntinya import Kastntinya    
 from stores.abuhanifah import AbuHanifah
 from stores.irfan import Irfan
+from stores.jqubookstore import JquBookstore
 from upload import BookManager, StatusManager
 import logging
 from dotenv import load_dotenv
@@ -42,6 +43,7 @@ STORE_MAPPING = {
     'kastntinya': Kastntinya,
     'abuhanifah': AbuHanifah,
     'irfan': Irfan,
+    'jqubookstore': JquBookstore,
 }
 
 async def main(store_name=None, no_save=False):
@@ -82,6 +84,7 @@ async def main(store_name=None, no_save=False):
             Kastntinya,
             AbuHanifah,
             Irfan,
+            JquBookstore,
         ]
         logger.info("Running all scrapers")
 
@@ -104,7 +107,7 @@ async def main(store_name=None, no_save=False):
         except Exception as e:
 
             time_to_crawl = datetime.now() - start_time
-            logger.error(f"Critical Error in {scrape.name}: {e}")
+            logger.error(f"Critical Error in {scrape.name}: {e}", exc_info=True)
             status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
 
         else:

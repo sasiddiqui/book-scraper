@@ -6,7 +6,7 @@ class Book(BaseModel):
     price: float
     url: str
     instock: bool
-    image: str
+    image: Optional[str] = None
     source: str
 
     publisher: Optional[str] = None
