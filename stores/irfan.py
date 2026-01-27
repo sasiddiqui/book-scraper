@@ -29,7 +29,7 @@ class Irfan(AbstractBookScraper):
                 .replace("| Irfan Books", "")
                 .strip()
             )
-        except AttributeError:
+        except Exception as e:
             self.logger.warning(f"Could not find title for {url}")
             return None
 
@@ -37,7 +37,7 @@ class Irfan(AbstractBookScraper):
             book_info["price"] = float(
                 soup.find("meta", property="product:price:amount")["content"].strip()
             )
-        except AttributeError:
+        except Exception as e:
             self.logger.warning(f"Could not find price for {url}")
             return None
 
@@ -45,7 +45,7 @@ class Irfan(AbstractBookScraper):
             book_info["image"] = soup.find("meta", property="og:image")[
                 "content"
             ].strip()
-        except AttributeError:
+        except Exception as e:
             self.logger.info(f"Could not find image for {url}")
 
         try:
@@ -53,7 +53,7 @@ class Irfan(AbstractBookScraper):
                 soup.find("meta", property="og:availability")["content"].strip()
                 == "InStock"
             )
-        except AttributeError:
+        except Exception as e:
             self.logger.info(f"Could not find instock for {url}")
 
         return book_info
