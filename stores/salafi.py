@@ -4,27 +4,28 @@ from bs4 import BeautifulSoup
 import re
 from bs4 import SoupStrainer
 
+
 class Salafi(AbstractBookScraper):
     def __init__(self):
-        super().__init__("https://salafibookstore.com", "Salafi Books", convert_rate=1.33)
+        super().__init__(
+            "https://salafibookstore.com", "Salafi Books", convert_rate=1.33
+        )
         self.batch_size = 4
         self.test_urls = [
             "https://salafibookstore.com/product/taleeq-ala-meemiyyah-ibn-al-qayyim/",
             "https://salafibookstore.com/product/the-book-of-manners/",
             "https://salafibookstore.com/product/muntaki-min-fataawa-fadheelah-al-shaykh-saalih-bin-fawzaan-bin-abdullah-al-fawzaan/",
-
         ]
 
         self.strainer = SoupStrainer(["meta", "nav", "h1", "bdi", "p", "button", "img"])
-    
+
     def ignore_url(self, url):
         ig = [
             "?add-to-cart=",
             "#",
-
         ]
         return any(i in url for i in ig)
-    
+
     def extract_book_info(self, soup: BeautifulSoup, url):
         book_info = {
             "url": url,
@@ -32,17 +33,23 @@ class Salafi(AbstractBookScraper):
         }
 
         # we only want the books not other stuff
-        breadcrumb = soup.find("nav", class_="woocommerce-breadcrumb").text.strip().lower()
+        breadcrumb = (
+            soup.find("nav", class_="woocommerce-breadcrumb").text.strip().lower()
+        )
         if "books" not in breadcrumb:
             self.logger.info(f"Skipping {url} because it is not a book")
             return None
 
         try:
-            book_info["title"] = soup.find("meta", property="og:title")["content"].strip("- Salafi Bookstore UK").strip()
+            book_info["title"] = (
+                soup.find("meta", property="og:title")["content"]
+                .strip("- Salafi Bookstore UK")
+                .strip()
+            )
         except AttributeError:
             self.logger.warning(f"Could not find title for {url}")
             return None
-        
+
         try:
             price = soup.find("bdi").text
             if price:
@@ -51,9 +58,9 @@ class Salafi(AbstractBookScraper):
         except AttributeError:
             self.logger.warning(f"Could not find price for {url}")
             return None
-        
+
         try:
-            # the 2th item always has the rigth image for some reason 
+            # the 2th item always has the rigth image for some reason
             image = soup.find_all("meta", property="og:image")
             book_info["image"] = image[1]["content"]
         except AttributeError:
@@ -67,13 +74,21 @@ class Salafi(AbstractBookScraper):
         book_info["instock"] = stock is not None
 
         try:
-            author = soup.find("th", class_="woocommerce-product-attributes-item__label", string=re.compile("Author"))
+            author = soup.find(
+                "th",
+                class_="woocommerce-product-attributes-item__label",
+                string=re.compile("Author"),
+            )
             book_info["author"] = author.find_next("td").text.strip()
         except AttributeError:
             self.logger.info(f"Could not find author for {url}")
-        
+
         try:
-            publisher = soup.find("th", class_="woocommerce-product-attributes-item__label", string=re.compile("Publisher"))
+            publisher = soup.find(
+                "th",
+                class_="woocommerce-product-attributes-item__label",
+                string=re.compile("Publisher"),
+            )
             book_info["publisher"] = publisher.find_next("td").text.strip()
         except AttributeError:
             self.logger.info(f"Could not find publisher for {url}")
@@ -81,4 +96,4 @@ class Salafi(AbstractBookScraper):
         return book_info
 
     def is_product_url(self, url):
-        return url.startswith(self.base_url) and '/product/' in url
+        return url.startswith(self.base_url) and "/product/" in url

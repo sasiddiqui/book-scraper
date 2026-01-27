@@ -25,7 +25,7 @@ class UmmahSpot:
             raise ScraperError(
                 f"{self.name} scraper - Failed to reach {self.base_url}. Status code: {response.status_code}. Skipping scraper..."
             )
-        
+
     def extract_book_info(self, product: dict) -> dict | None:
         product = product["node"]
 
@@ -41,7 +41,6 @@ class UmmahSpot:
         if product["publisher"] is not None:
             publisher = product["publisher"]["value"]
 
-
         book_info = {
             "source": self.name,
             "url": product["onlineStoreUrl"],
@@ -54,7 +53,7 @@ class UmmahSpot:
             "description": product["description"],
         }
         return book_info
-    
+
     def is_product_url(self, url: str) -> bool:
         return url.startswith(self.base_url) and "/products/" in url
 
@@ -66,14 +65,21 @@ class UmmahSpot:
         end_cursor = None
         while True:
 
-            query = "query GetProducts($first: Int!, $after: String) { products(first: $first, after: $after) { pageInfo { hasNextPage endCursor } edges { node { id title priceRange {maxVariantPrice{amount}} availableForSale description featuredImage { url } onlineStoreUrl author: metafield(namespace: \"custom\", key: \"author\") { value } publisher: metafield(namespace: \"custom\", key: \"publisher\") { value } } } } }"
+            query = 'query GetProducts($first: Int!, $after: String) { products(first: $first, after: $after) { pageInfo { hasNextPage endCursor } edges { node { id title priceRange {maxVariantPrice{amount}} availableForSale description featuredImage { url } onlineStoreUrl author: metafield(namespace: "custom", key: "author") { value } publisher: metafield(namespace: "custom", key: "publisher") { value } } } } }'
             variables = {"first": 250, "after": end_cursor}
-            r = requests.post(f"{self.base_url}/api/2025-10/graphql.json", headers=self.headers, json={"query": query, "variables": variables}).json()
+            r = requests.post(
+                f"{self.base_url}/api/2025-10/graphql.json",
+                headers=self.headers,
+                json={"query": query, "variables": variables},
+            ).json()
 
-            products.extend(self.extract_book_info(product) for product in r["data"]["products"]["edges"])
+            products.extend(
+                self.extract_book_info(product)
+                for product in r["data"]["products"]["edges"]
+            )
 
             end_cursor = r["data"]["products"]["pageInfo"]["endCursor"]
             if not r["data"]["products"]["pageInfo"]["hasNextPage"]:
                 break
-        
+
         return products

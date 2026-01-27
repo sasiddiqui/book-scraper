@@ -16,20 +16,20 @@ import pickle
 class ScraperError(Exception):
     pass
 
+
 class TestError(Exception):
     pass
+
 
 start_timestamp = str(datetime.datetime.now())
 
 
-
-logger = logging.getLogger('scraper')
+logger = logging.getLogger("scraper")
 logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
 
-
-file_handler = logging.FileHandler(f'logs/scraper-{start_timestamp}.log')
+file_handler = logging.FileHandler(f"logs/scraper-{start_timestamp}.log")
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
@@ -44,18 +44,24 @@ logger.addHandler(console_handler)
 def remove_tld(url):
     # Parse the URL
     parsed_url = urlparse(url)
-    
+
     # Split the hostname to remove the TLD
-    domain_parts = parsed_url.hostname.split('.')
-    
+    domain_parts = parsed_url.hostname.split(".")
+
     return domain_parts[1]
+
 
 import asyncio
 import aiohttp
 from aiohttp import ClientSession
 
+
 class AbstractBookScraper(ABC):
     def __init__(self, base_url, name, convert_rate=1):
+        # ensure that the base url ends with a slash
+        if not base_url.endswith("/"):
+            base_url += "/"
+
         self.base_url = base_url
         self.name = name
         self.logger = logger
@@ -66,18 +72,18 @@ class AbstractBookScraper(ABC):
         self.batch_size = 20
         self.strainer = SoupStrainer()
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Cache-Control': 'max-age=0'
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Cache-Control": "max-age=0",
         }
         self.batch_delay = 0  # Delay between batches in seconds
 
@@ -86,7 +92,7 @@ class AbstractBookScraper(ABC):
 
         # converting from GBP to USD
         self.convert_rate = convert_rate
-        self.test_urls = [] # urls that should cover all possible cases
+        self.test_urls = []  # urls that should cover all possible cases
 
     @abstractmethod
     def extract_book_info(self, soup: BeautifulSoup, url) -> Book | None:
@@ -96,7 +102,6 @@ class AbstractBookScraper(ABC):
     def is_product_url(self, url):
         pass
 
-
     def ignore_url(self, url) -> bool:
         return False
 
@@ -104,83 +109,113 @@ class AbstractBookScraper(ABC):
         return url.startswith(self.base_url)
 
     def write_to_csv(self, book_list):
-        with open('csvs/' + self.name, 'w', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=['URL', 'Title', 'Author', 'Price', "In Stock", "Image", "Editor", "Edition", "Year Published", "Volumes", "Pages", "Binding", "Weight"])
+        with open("csvs/" + self.name, "w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(
+                file,
+                fieldnames=[
+                    "URL",
+                    "Title",
+                    "Author",
+                    "Price",
+                    "In Stock",
+                    "Image",
+                    "Editor",
+                    "Edition",
+                    "Year Published",
+                    "Volumes",
+                    "Pages",
+                    "Binding",
+                    "Weight",
+                ],
+            )
             writer.writeheader()
             for book in book_list:
                 writer.writerow(book)
 
     def write_to_json(self):
-        json.dump(self.all_books, open("jsons/" + self.name + ".json", 'w'), indent=4)
+        json.dump(self.all_books, open("jsons/" + self.name + ".json", "w"), indent=4)
 
     def save_lines_to_file(self, links, filename):
-        with open(f"{filename}.txt", 'w') as file:
+        with open(f"{filename}.txt", "w") as file:
             for link in links:
                 file.write(str(link))
-                file.write('\n')
-    
+                file.write("\n")
+
     # in a method so that it can be overridden by some scrapers
     def add_book(self, book_info: Book) -> None:
         if book_info:
             self.all_books.append(book_info.model_dump(exclude_none=True))
 
-
-    async def fetch_page(self, session: ClientSession, url: str, referer: str = None) -> tuple[str, str]:
+    async def fetch_page(
+        self, session: ClientSession, url: str, referer: str = None
+    ) -> tuple[str, str]:
         logger.info(f"Fetching page: {url}")
         try:
             # Add referer header if provided
             headers = self.headers.copy()
             if referer:
-                headers['Referer'] = referer
-                headers['Sec-Fetch-Site'] = 'same-origin'
-            
+                headers["Referer"] = referer
+                headers["Sec-Fetch-Site"] = "same-origin"
+
             async with session.get(url, headers=headers, timeout=20) as response:
                 if response.status == 200:
                     content = await response.content.read()
                     return url, content
                 else:
-                    self.logger.error(f'Failed to retrieve the page at {url}. Status code: {response.status}')
+                    self.logger.error(
+                        f"Failed to retrieve the page at {url}. Status code: {response.status}"
+                    )
 
                     # 503 is a temporary error, so we should retry
-
                     if response.status in [503, 429, 301]:
                         self.error_count += 1
-                        raise ScraperError(f'{response.status} error on {url}')
+                        # look for retry-after header
+                        retry_after = response.headers.get("Retry-After") or 30
+                        if retry_after:
+                            self.logger.info(f"Retrying {url} in {retry_after} seconds")
+                            time.sleep(int(retry_after) + 1)
+                            return await self.fetch_page(session, url, referer)
+                        else:
+                            raise ScraperError(f"{response.status} error on {url}")
                     
 
         except asyncio.TimeoutError:
-            self.logger.error(f'Timeout on {url}')
+            self.logger.error(f"Timeout on {url}")
         except Exception as e:
-            self.logger.error(f'Unexpected error on {url}: {e}')
+            self.logger.error(f"Unexpected error on {url}: {e}")
             self.error_count += 1
             if isinstance(e, ScraperError):
                 raise e
-        
+
         if self.error_count > self.ERROR_THRESHOLD:
-            raise ScraperError(f'Error threshold reached for {url}')
-        
+            raise ScraperError(f"Error threshold reached for {url}")
+
         return url, None
 
     def get_cache(self, use_cached_links) -> None:
-        with open(f"saved_progress/urls_to_visit_{use_cached_links}.txt", 'r') as file:
+        with open(f"saved_progress/urls_to_visit_{use_cached_links}.txt", "r") as file:
             self.urls_to_visit = file.readlines()
             self.urls_to_visit = set([url.strip() for url in self.urls_to_visit])
 
-        with open(f"saved_progress/visited_urls_{use_cached_links}.txt", 'r') as file:
+        with open(f"saved_progress/visited_urls_{use_cached_links}.txt", "r") as file:
             self.visited_urls = file.readlines()
             self.visited_urls = set([url.strip() for url in self.visited_urls])
 
-        with open(f"saved_progress/all_books_{use_cached_links}", 'rb') as file:
+        with open(f"saved_progress/all_books_{use_cached_links}", "rb") as file:
             self.all_books = pickle.load(file)
-    
+
     def test_base_url(self):
         response = requests.get(self.base_url, headers=self.headers, timeout=10)
         if response.status_code == 200:
             return True
         else:
-            raise ScraperError(f'{self.name} scraper - Failed to reach {self.base_url}. Status code: {response.status_code}. Skipping scraper...')
+            raise ScraperError(
+                f"{self.name} scraper - Failed to reach {self.base_url}. Status code: {response.status_code}. Skipping scraper..."
+            )
 
-    async def crawl_product_pages(self, initial_urls=list(), use_cached_links=None) -> list[dict]:
+    async def crawl_product_pages(
+        self, initial_urls=list(), use_cached_links=None
+    ) -> list[dict]:
         self.logger.info(f"Crawling {self.name}")
 
         start = time.time()
@@ -188,7 +223,7 @@ class AbstractBookScraper(ABC):
             self.get_cache(use_cached_links)
         else:
             self.urls_to_visit = [self.base_url] + initial_urls
-        
+
         # ensure that the url is actual available.
         self.test_base_url()
 
@@ -214,27 +249,29 @@ class AbstractBookScraper(ABC):
 
                 # wait for all tasks to complete
                 responses = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 # Update last_url to the first URL from this batch for next referer
                 if batch_urls:
                     last_url = batch_urls[0]
-                
+
                 # Process responses
                 for url, result in zip(batch_urls, responses):
                     # Skip if result is an exception
                     if isinstance(result, Exception):
-                        self.logger.error(f'Exception while fetching {url}: {result}')
+                        self.logger.error(f"Exception while fetching {url}: {result}")
                         self.count += 1
                         continue
-                    
+
                     # Unpack the tuple (url, content) returned by fetch_page
                     fetch_url, response = result
-                    
+
                     if response:
                         soup = None
                         # If it is a product page, extract book information
                         if self.is_product_url(url):
-                            soup = BeautifulSoup(response, 'lxml', parse_only=self.strainer)
+                            soup = BeautifulSoup(
+                                response, "lxml", parse_only=self.strainer
+                            )
                             try:
                                 book_info = self.extract_book_info(soup, url)
 
@@ -244,39 +281,60 @@ class AbstractBookScraper(ABC):
                                         book_info.price *= self.convert_rate
 
                                     except ValidationError as e:
-                                        logger.warning(f'Could not validate book info on {url}: {e}')
+                                        logger.warning(
+                                            f"Could not validate book info on {url}: {e}"
+                                        )
                                         continue
 
-
                             except AttributeError:
-                                logger.warning(f'Could not find essential book details on {url}')
-                                continue 
+                                logger.warning(
+                                    f"Could not find essential book details on {url}"
+                                )
+                                continue
 
                             self.add_book(book_info)
                             if book_info is not None:
-                                logger.info(f'SUCCESS - Added {book_info.title} to all books - {url}')
+                                logger.info(
+                                    f"SUCCESS - Added {book_info.title} to all books - {url}"
+                                )
 
-                        soup = BeautifulSoup(response, 'lxml', parse_only=SoupStrainer('a'))
-                        
+                        soup = BeautifulSoup(
+                            response, "lxml", parse_only=SoupStrainer("a")
+                        )
+
                         # Find all links on the page and add product links to the queue
-                        new_links = [link['href'] for link in soup.find_all('a', href=True)]
+                        new_links = [
+                            link["href"] for link in soup.find_all("a", href=True)
+                        ]
                         for link in new_links:
-                            absolute_link = urljoin(url, link)
-                            if self.url_in_domain(absolute_link) and not self.ignore_url(absolute_link) and absolute_link not in self.visited_urls and absolute_link not in self.urls_to_visit:
+                            # make sure its actually a real url
+                            try:
+                                absolute_link = urljoin(url, link)
+                            except ValueError:
+                                # Skip malformed URLs (e.g., links with invalid characters like [xiii])
+                                continue
+
+                            if (
+                                self.url_in_domain(absolute_link)
+                                and not self.ignore_url(absolute_link)
+                                and absolute_link not in self.visited_urls
+                                and absolute_link not in self.urls_to_visit
+                            ):
                                 self.urls_to_visit.append(absolute_link)
-                    
+
                     self.count += 1
-                
+
                 # Add delay between batches to avoid rate limiting
                 if self.urls_to_visit and self.batch_delay > 0:
                     await asyncio.sleep(self.batch_delay)
                     # if self.count % 25 == 0:
-                        # self.save_lines_to_file(self.urls_to_visit, f"saved_progress/urls_to_visit_{start_timestamp}")
-                        # self.save_lines_to_file(list(self.visited_urls), f"saved_progress/visited_urls_{start_timestamp}")
-                        # logger.info(f'Saved progress at {self.count} links')
-                            
-                        # self.write_to_json()
+                    # self.save_lines_to_file(self.urls_to_visit, f"saved_progress/urls_to_visit_{start_timestamp}")
+                    # self.save_lines_to_file(list(self.visited_urls), f"saved_progress/visited_urls_{start_timestamp}")
+                    # logger.info(f'Saved progress at {self.count} links')
 
-            self.logger.info(f"Finished crawling {self.name} in {time.time() - start} seconds")
+                    # self.write_to_json()
+
+            self.logger.info(
+                f"Finished crawling {self.name} in {time.time() - start} seconds"
+            )
             return self.all_books
-

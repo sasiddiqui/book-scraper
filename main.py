@@ -14,37 +14,40 @@ from stores.buraq import Buraq
 from stores.salafi import Salafi
 from stores.ummahspot import UmmahSpot
 from stores.daralmuttaqin import DarAlMuttaqin
-from stores.kastntinya import Kastntinya    
+from stores.kastntinya import Kastntinya
 from stores.abuhanifah import AbuHanifah
 from stores.irfan import Irfan
 from stores.jqubookstore import JquBookstore
+from stores.irsad import Irsad
 from upload import BookManager, StatusManager
 import logging
 from dotenv import load_dotenv
 
 
-logger = logging.getLogger('scraper')
+logger = logging.getLogger("scraper")
 
 # Store name mapping to scraper classes
 STORE_MAPPING = {
-    'zakariyya': ZakariyyaBooksScraper,
-    'ismaeel': IsmaeelScraper,
-    'albadr': AlBadrBooksScraper,
-    'alhidaayah': AlHidayaah,
-    'qurtuba': Qurtuba,
-    'sifatusafwa': SifatuSafwa,
-    'albalagh': AlBalagh,
-    'kunuz': Kunuz,
-    'buraq': Buraq,
-    'salafi': Salafi,  
-    'maktabahalhidayah': MaktabahAlHidayah,
-    'ummahspot': UmmahSpot,
-    'daralmuttaqin': DarAlMuttaqin,
-    'kastntinya': Kastntinya,
-    'abuhanifah': AbuHanifah,
-    'irfan': Irfan,
-    'jqubookstore': JquBookstore,
+    "zakariyya": ZakariyyaBooksScraper,
+    "ismaeel": IsmaeelScraper,
+    "albadr": AlBadrBooksScraper,
+    "alhidaayah": AlHidayaah,
+    "qurtuba": Qurtuba,
+    "sifatusafwa": SifatuSafwa,
+    "albalagh": AlBalagh,
+    "kunuz": Kunuz,
+    "buraq": Buraq,
+    "salafi": Salafi,
+    "maktabahalhidayah": MaktabahAlHidayah,
+    "ummahspot": UmmahSpot,
+    "daralmuttaqin": DarAlMuttaqin,
+    "kastntinya": Kastntinya,
+    "abuhanifah": AbuHanifah,
+    "irfan": Irfan,
+    "jqubookstore": JquBookstore,
+    "irsad": Irsad,
 }
+
 
 async def main(store_name=None, no_save=False):
 
@@ -62,7 +65,9 @@ async def main(store_name=None, no_save=False):
     # Select scrapers based on store_name parameter
     if store_name:
         if store_name not in STORE_MAPPING:
-            logger.error(f"Unknown store: {store_name}. Available stores: {', '.join(STORE_MAPPING.keys())}")
+            logger.error(
+                f"Unknown store: {store_name}. Available stores: {', '.join(STORE_MAPPING.keys())}"
+            )
             return
         scrapers = [STORE_MAPPING[store_name]]
         logger.info(f"Running scraper for store: {store_name}")
@@ -76,7 +81,7 @@ async def main(store_name=None, no_save=False):
             AlBadrBooksScraper,
             Buraq,
             AlBalagh,
-            Kunuz,      
+            Kunuz,
             Salafi,
             MaktabahAlHidayah,
             UmmahSpot,
@@ -85,6 +90,7 @@ async def main(store_name=None, no_save=False):
             AbuHanifah,
             Irfan,
             JquBookstore,
+            Irsad,
         ]
         logger.info("Running all scrapers")
 
@@ -99,7 +105,7 @@ async def main(store_name=None, no_save=False):
             start_time = datetime.now()
             books = await scrape.crawl_product_pages()
             time_to_crawl = datetime.now() - start_time
-            # ensures that some books were actually found 
+            # ensures that some books were actually found
             if books:
                 if not no_save:
                     db.upload_books(scrape.name, books)
@@ -108,26 +114,42 @@ async def main(store_name=None, no_save=False):
 
             time_to_crawl = datetime.now() - start_time
             logger.error(f"Critical Error in {scrape.name}: {e}", exc_info=True)
-            status.update_status(scrape.name, error=e.__str__(), last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60)
+            status.update_status(
+                scrape.name,
+                error=e.__str__(),
+                last_crawled=datetime.now(),
+                time_to_crawl=time_to_crawl.seconds / 60,
+            )
 
         else:
-            status.update_status(scrape.name, error=None, last_crawled=datetime.now(), time_to_crawl=time_to_crawl.seconds/60, total_books=len(books))
+            status.update_status(
+                scrape.name,
+                error=None,
+                last_crawled=datetime.now(),
+                time_to_crawl=time_to_crawl.seconds / 60,
+                total_books=len(books),
+            )
 
         logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes")
-    
+
     status.set_status("idle")
-    
+
     logger.info("All scrapers finished. Exiting...")
     exit(0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     if not load_dotenv():
         raise ValueError("No .env file found")
 
-    parser = argparse.ArgumentParser(description='Book scraper with optional store selection')
-    parser.add_argument('--store', type=str, help='Run scraper for specific store only')
-    parser.add_argument('--no-save', action='store_true', help='Do not save books to database')
+    parser = argparse.ArgumentParser(
+        description="Book scraper with optional store selection"
+    )
+    parser.add_argument("--store", type=str, help="Run scraper for specific store only")
+    parser.add_argument(
+        "--no-save", action="store_true", help="Do not save books to database"
+    )
     args = parser.parse_args()
-    
+
     # call main with store argument
     asyncio.run(main(args.store, args.no_save))

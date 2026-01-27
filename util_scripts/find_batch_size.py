@@ -4,6 +4,7 @@ import argparse
 import aiohttp
 import asyncio
 
+
 async def main(url) -> int:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
@@ -12,8 +13,11 @@ async def main(url) -> int:
             else:
                 return False
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Find the batch size for a given website')
-    parser.add_argument('--url', type=str, help='URL to test')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Find the batch size for a given website"
+    )
+    parser.add_argument("--url", type=str, help="URL to test")
 
     args = parser.parse_args()

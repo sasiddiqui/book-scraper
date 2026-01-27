@@ -1,9 +1,15 @@
 import os
 from stores.wooscraper import WooScraper
 
+
 class DarAlMuttaqin(WooScraper):
     def __init__(self):
-        super().__init__("Dar Al-Muttaqin", "https://almuttaqin.co.uk", os.getenv("MUTTAQIN_CK"), os.getenv("MUTTAQIN_CS"))
+        super().__init__(
+            "Dar Al-Muttaqin",
+            "https://almuttaqin.co.uk",
+            os.getenv("MUTTAQIN_CK"),
+            os.getenv("MUTTAQIN_CS"),
+        )
         self.convert_rate = 1.32
 
     def extract_book_info(self, product: dict) -> dict | None:
@@ -15,7 +21,6 @@ class DarAlMuttaqin(WooScraper):
                 author = attribute["options"][0]
             if attribute["name"] == "الناشر":
                 publisher = attribute["options"][0]
-            
 
         book_info["price"] = float(book_info["price"]) * self.convert_rate
 
