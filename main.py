@@ -19,7 +19,10 @@ from stores.abuhanifah import AbuHanifah
 from stores.irfan import Irfan
 from stores.jqubookstore import JquBookstore
 from stores.irsad import Irsad
+from stores.darulhikmah import DarulHikmah
+from stores.daruliman import Daruliman
 from upload import BookManager, StatusManager
+import enrich_authors
 import logging
 from dotenv import load_dotenv
 
@@ -46,10 +49,12 @@ STORE_MAPPING = {
     "irfan": Irfan,
     "jqubookstore": JquBookstore,
     "irsad": Irsad,
+    "darulhikmah": DarulHikmah,
+    "daruliman": Daruliman,
 }
 
 
-async def main(store_name=None, no_save=False):
+async def main(store_name=None, no_save=False, enrich=False, ignore_success=False):
 
     # await AlBadrBooksScraper().crawl_product_pages()
     # await IsmaeelScraper().crawl_product_pages()
@@ -91,6 +96,8 @@ async def main(store_name=None, no_save=False):
             Irfan,
             JquBookstore,
             Irsad,
+            DarulHikmah,
+            Daruliman,
         ]
         logger.info("Running all scrapers")
 
@@ -103,7 +110,10 @@ async def main(store_name=None, no_save=False):
             status.set_status(scrape.name)
 
             start_time = datetime.now()
-            books = await scrape.crawl_product_pages()
+            last_success = None if ignore_success else (
+                status.status.get(scrape.name, {}).get("last_crawl_success") or None
+            )
+            books = await scrape.crawl_product_pages(last_crawl_success=last_success)
             time_to_crawl = datetime.now() - start_time
             # ensures that some books were actually found
             if books:
@@ -128,9 +138,17 @@ async def main(store_name=None, no_save=False):
                 last_crawled=datetime.now(),
                 time_to_crawl=time_to_crawl.seconds / 60,
                 total_books=len(books),
+                last_crawl_success=datetime.now() if books else None,
             )
 
-        logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes")
+        logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes. {len(books)} books found.")
+
+    if not no_save and enrich:
+        try:
+            status.set_status("enriching")
+            await enrich_authors.run_async()
+        except Exception as e:
+            logger.error(f"Author enrichment failed: {e}", exc_info=True)
 
     status.set_status("idle")
 
@@ -149,7 +167,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--no-save", action="store_true", help="Do not save books to database"
     )
+    parser.add_argument(
+        "--enrich",
+        action="store_true",
+        help="Run the post-scrape LLM author enrichment pass",
+    )
+    parser.add_argument(
+        "--ignore-success",
+        action="store_true",
+        help="Do not pass last crawl success (full crawl for scrapers that support incremental updates)",
+    )
     args = parser.parse_args()
 
-    # call main with store argument
-    asyncio.run(main(args.store, args.no_save))
+    asyncio.run(
+        main(args.store, args.no_save, args.enrich, args.ignore_success)
+    )

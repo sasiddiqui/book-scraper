@@ -42,7 +42,7 @@ class WooScraper:
         }
         return book_info
 
-    async def crawl_product_pages(self):
+    async def crawl_product_pages(self, last_crawl_success=None):
 
         self.test_base_url()
 

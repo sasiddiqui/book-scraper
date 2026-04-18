@@ -214,7 +214,7 @@ class AbstractBookScraper(ABC):
             )
 
     async def crawl_product_pages(
-        self, initial_urls=list(), use_cached_links=None
+        self, last_crawl_success=None, initial_urls=list(), use_cached_links=None
     ) -> list[dict]:
         self.logger.info(f"Crawling {self.name}")
 

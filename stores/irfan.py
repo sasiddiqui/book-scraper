@@ -58,7 +58,7 @@ class Irfan(AbstractBookScraper):
 
         return book_info
 
-    async def crawl_product_pages(self) -> list[dict]:
+    async def crawl_product_pages(self, last_crawl_success=None) -> list[dict]:
 
         self.test_base_url()
 

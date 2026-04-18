@@ -101,7 +101,7 @@ class Irsad(AbstractBookScraper):
         logger.info(f"Found {len(product_urls)} product urls")
         return list(product_urls)
 
-    async def crawl_product_pages(self):
+    async def crawl_product_pages(self, last_crawl_success=None):
         self.test_base_url()
         product_urls = self.get_all_product_urls()
         total_urls = len(product_urls)

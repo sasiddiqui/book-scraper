@@ -1,7 +1,12 @@
 from book import Book
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+import logging
 import re
+
+from title_key import title_key
+
+logger = logging.getLogger("scraper")
 
 uri = open("mongourl.txt").read().strip()
 
@@ -62,7 +67,10 @@ class StatusManager:
                     "error": None,
                     "time_to_crawl": None,
                     "total_books": db["books"].count_documents({"source": name}),
+                    "last_crawl_success": None,
                 }
+            elif "last_crawl_success" not in self.status[name]:
+                self.status[name]["last_crawl_success"] = None
 
         self._save()
 
@@ -80,6 +88,7 @@ class StatusManager:
         error: str,
         time_to_crawl: int,
         total_books: int | None = None,
+        last_crawl_success=None,
     ):
         if scraper_name not in self.status:
             raise ValueError(f"Scraper {scraper_name} not found in status")
@@ -93,31 +102,85 @@ class StatusManager:
 
         self.status[scraper_name]["total_books"] = total_books
 
+        if last_crawl_success is not None:
+            self.status[scraper_name]["last_crawl_success"] = last_crawl_success
+
         self._save()
 
 
 class BookManager:
     def __init__(self):
         self.books = db["books"]
+        self.author_cache = db["author_cache"]
+
+    def _apply_author_cache(self, books: list[dict]) -> int:
+        """
+        For books missing `author`, look up their normalized title in `author_cache`
+        and fill in authorEn / authorAr if we have an `enriched` row. Returns the
+        number of books that got an author applied.
+        """
+        missing = [
+            (i, title_key(b.get("title")))
+            for i, b in enumerate(books)
+            if not b.get("author")
+        ]
+        keys = {k for _, k in missing if k}
+        if not keys:
+            return 0
+
+        cache_rows = {
+            r["titleKey"]: r
+            for r in self.author_cache.find(
+                {"titleKey": {"$in": list(keys)}, "status": "enriched"}
+            )
+        }
+        if not cache_rows:
+            return 0
+
+        applied = 0
+        for idx, key in missing:
+            if not key:
+                continue
+            row = cache_rows.get(key)
+            if not row:
+                continue
+            book = books[idx]
+            author_en = row.get("authorEn")
+            author_ar = row.get("authorAr")
+            if author_en:
+                book["author"] = author_en
+            if author_ar:
+                book["authorArabic"] = author_ar
+            if author_en or author_ar:
+                book["authorSource"] = "llm"
+                applied += 1
+        return applied
 
     def upload_books(self, source: str, books: list[dict]) -> None:
         """
         Delete all books for this source then insert new ones.
         Adds normalized fields (titleNormalized, authorNormalized) for hamza-agnostic search.
+        Fills in author/authorArabic from `author_cache` when the scraper couldn't find one.
         """
 
-        # Convert books to dicts and add normalized fields
+        applied = self._apply_author_cache(books)
+        if applied:
+            logger.info(f"upload_books: applied cached authors to {applied}/{len(books)} books for {source}")
+
         books_dicts = []
         for book in books:
 
-            # Add normalized fields for search (without hamzas)
             book["titleNormalized"] = sanitize_arabic_text(book["title"])
 
             book["authorNormalized"] = None
+            book["authorArabicNormalized"] = None
             book["publisherNormalized"] = None
 
             if "author" in book and book["author"]:
                 book["authorNormalized"] = sanitize_arabic_text(book["author"])
+
+            if "authorArabic" in book and book["authorArabic"]:
+                book["authorArabicNormalized"] = sanitize_arabic_text(book["authorArabic"])
 
             if "publisher" in book and book["publisher"]:
                 book["publisherNormalized"] = sanitize_arabic_text(book["publisher"])

@@ -12,10 +12,12 @@ class Book(BaseModel):
 
     publisher: Optional[str] = None
     author: Optional[str] = None
+    authorArabic: Optional[str] = None
     description: Optional[str] = None
 
     titleNormalized: Optional[str] = None
     authorNormalized: Optional[str] = None
+    authorArabicNormalized: Optional[str] = None
     publisherNormalized: Optional[str] = None
 
     def __str__(self):

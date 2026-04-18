@@ -1,0 +1,26 @@
+{
+  "url": "https://www.sifatusafwa.com",
+  "cookies": [
+    {
+      "name": "cookiesplus",
+      "value": "%7B%22gtm_consent_mode%22%3A%7B%22cookiesplus-finality-1%22%3A%7B%22gtm_consent_type%22%3A%7B%22functionality_storage%22%3Atrue%2C%22personalization_storage%22%3Atrue%2C%22security_storage%22%3Atrue%7D%7D%2C%22cookiesplus-finality-3%22%3A%7B%22gtm_consent_type%22%3A%7B%22analytics_storage%22%3Atrue%7D%7D%2C%22cookiesplus-finality-4%22%3A%7B%22gtm_consent_type%22%3A%7B%22ad_storage%22%3Atrue%2C%22ad_user_data%22%3Atrue%2C%22ad_personalization%22%3Atrue%7D%7D%2C%22url_passthrough%22%3Afalse%2C%22ads_data_redaction%22%3A%221%22%7D%2C%22muet_consent_mode%22%3A%5B%5D%2C%22consents%22%3A%7B%22cookiesplus-finality-1%22%3A%22on%22%7D%7D",
+      "domain": ".sifatusafwa.com",
+      "path": "/"
+    },
+    {
+      "name": "PHPSESSID",
+      "value": "k34qjg2v6b0o3gqlslbc1v11qr",
+      "domain": "www.sifatusafwa.com",
+      "path": "/"
+    },
+    {
+      "name": "PrestaShop-77088f62afcd883779807f761dae09d4",
+      "value": "def50200b53cd54deb81b1237a4412b17d482ed1979e366bb877ae76084c869fd903c17a26e6dc6553146d34ffbe00621e8d570731bded81e940cac05192b0acf2d37367fcb0fff0f48cbf3c40a2e20959d14015f48d0b29ca1302d06d32d2c82da36f297628e1560798000e6fbe7749cf341bc0dc8b87c6cf948a483f92a1dca53bf8c25acd43830884c7890a7b6916836e1e5d97ed3a0fb0fcfd6d9b02bf2d1513fc5f59f5361fc9b3359fd6ba45a9417c296598b843ddf47f34921c00af085fd83f480f25a6bc9cfd5356af248b2d8a4542be25b2e9f41e5c5616ac6b9c0f26d0b7228e3c02c9afea5603228ab1acff733565f0f2ddca9214c328df5fb6fb91659d820415456fe7b0ea15e9c79ec12493a5e9c9fed6d488",
+      "domain": ".www.sifatusafwa.com",
+      "path": "/"
+    }
+  ],
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
+  "accept_language": "en-US",
+  "saved_at": 1776382417.3195012
+}
