@@ -415,7 +415,7 @@ def main():
 
         # Fetch data (last 24 hours by default)
         print("\nFetching usage data from the last 24 hours...")
-        documents = get_usage_data(db, hours=1000)
+        documents = get_usage_data(db, hours=168)
 
         if not documents:
             print("No documents found in usage collection")

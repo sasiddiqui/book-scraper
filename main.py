@@ -21,6 +21,7 @@ from stores.jqubookstore import JquBookstore
 from stores.irsad import Irsad
 from stores.darulhikmah import DarulHikmah
 from stores.daruliman import Daruliman
+from stores.osman import OsmanScraper
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -51,6 +52,7 @@ STORE_MAPPING = {
     "irsad": Irsad,
     "darulhikmah": DarulHikmah,
     "daruliman": Daruliman,
+    "osman": OsmanScraper,
 }
 
 
@@ -98,6 +100,7 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             Irsad,
             DarulHikmah,
             Daruliman,
+            OsmanScraper,
         ]
         logger.info("Running all scrapers")
 

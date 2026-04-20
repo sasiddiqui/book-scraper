@@ -1,10 +1,15 @@
 from book import Book
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+from pymongo import UpdateOne
+import hashlib
 import logging
+import os
 import re
+from datetime import datetime, timezone
 
 from title_key import title_key
+import voyage_embed
 
 logger = logging.getLogger("scraper")
 
@@ -108,10 +113,34 @@ class StatusManager:
         self._save()
 
 
+def _embedding_input(book: dict) -> str | None:
+    """
+    Build the text we embed for a book.
+
+    Just title on its own, or "title\\nauthor" when the book has an author.
+    Deliberately skips authorArabic / publisher / description - see the plan.
+    Returns None if there's no usable title (shouldn't happen, but defensive).
+    """
+    title = (book.get("title") or "").strip()
+    if not title:
+        return None
+    author = (book.get("author") or "").strip()
+    if author:
+        return f"{title}\n{author}"
+    return title
+
+
+def _embedding_cache_key(text: str, model: str) -> str:
+    digest = hashlib.sha256(f"{model}|{text}".encode("utf-8")).hexdigest()
+    return digest
+
+
 class BookManager:
     def __init__(self):
         self.books = db["books"]
         self.author_cache = db["author_cache"]
+        self.embedding_cache = db["embedding_cache"]
+        self.embedding_model = os.getenv("VOYAGE_MODEL", voyage_embed.DEFAULT_MODEL)
 
     def _apply_author_cache(self, books: list[dict]) -> int:
         """
@@ -156,6 +185,91 @@ class BookManager:
                 applied += 1
         return applied
 
+    def _apply_embeddings(self, books: list[dict]) -> int:
+        """
+        Attach `embedding` + `embeddingModel` to each book using `embedding_cache`
+        to avoid re-billing identical text across re-crawls.
+
+        Returns the number of books that got an embedding attached (for logging).
+        If VOYAGE_API_KEY is missing, logs once and returns 0 - books are uploaded
+        without embeddings and the frontend falls back to keyword-only search.
+        """
+        # Build (index, cache_key, text) for every book that has usable text.
+        entries: list[tuple[int, str, str]] = []
+        for i, book in enumerate(books):
+            text = _embedding_input(book)
+            if not text:
+                continue
+            key = _embedding_cache_key(text, self.embedding_model)
+            entries.append((i, key, text))
+
+        if not entries:
+            return 0
+
+        # Pull existing vectors from the cache in one query.
+        unique_keys = list({k for _, k, _ in entries})
+        cached: dict[str, list[float]] = {}
+        for row in self.embedding_cache.find(
+            {"_id": {"$in": unique_keys}}, {"vector": 1}
+        ):
+            vec = row.get("vector")
+            if vec:
+                cached[row["_id"]] = vec
+
+        # Figure out which unique texts still need an API call. We dedupe so
+        # identical texts across books only cost one embedding.
+        misses: dict[str, str] = {}
+        for _, key, text in entries:
+            if key in cached or key in misses:
+                continue
+            misses[key] = text
+
+        if misses:
+            miss_keys = list(misses.keys())
+            miss_texts = [misses[k] for k in miss_keys]
+            try:
+                vectors = voyage_embed.embed_texts(
+                    miss_texts, model=self.embedding_model, input_type="document"
+                )
+            except voyage_embed.VoyageError as exc:
+                logger.error(f"upload_books: embedding failed, skipping: {exc}")
+                vectors = None
+
+            if vectors is None:
+                # Either no API key or an API failure - continue without embeddings.
+                # We still use whatever was in cache.
+                pass
+            else:
+                now = datetime.now(timezone.utc)
+                ops: list[UpdateOne] = []
+                for key, vec in zip(miss_keys, vectors):
+                    cached[key] = vec
+                    ops.append(
+                        UpdateOne(
+                            {"_id": key},
+                            {
+                                "$set": {
+                                    "model": self.embedding_model,
+                                    "vector": vec,
+                                    "created_at": now,
+                                }
+                            },
+                            upsert=True,
+                        )
+                    )
+                if ops:
+                    self.embedding_cache.bulk_write(ops, ordered=False)
+
+        applied = 0
+        for i, key, _ in entries:
+            vec = cached.get(key)
+            if not vec:
+                continue
+            books[i]["embedding"] = vec
+            books[i]["embeddingModel"] = self.embedding_model
+            applied += 1
+        return applied
+
     def upload_books(self, source: str, books: list[dict]) -> None:
         """
         Delete all books for this source then insert new ones.
@@ -163,9 +277,9 @@ class BookManager:
         Fills in author/authorArabic from `author_cache` when the scraper couldn't find one.
         """
 
-        applied = self._apply_author_cache(books)
-        if applied:
-            logger.info(f"upload_books: applied cached authors to {applied}/{len(books)} books for {source}")
+        # applied = self._apply_author_cache(books)
+        # if applied:
+            # logger.info(f"upload_books: applied cached authors to {applied}/{len(books)} books for {source}")
 
         books_dicts = []
         for book in books:
@@ -186,6 +300,12 @@ class BookManager:
                 book["publisherNormalized"] = sanitize_arabic_text(book["publisher"])
 
             books_dicts.append(book)
+
+        embedded = self._apply_embeddings(books_dicts)
+        if embedded:
+            logger.info(
+                f"upload_books: attached embeddings to {embedded}/{len(books_dicts)} books for {source}"
+            )
 
         self.books.delete_many({"source": source})
         self.books.insert_many(books_dicts)
