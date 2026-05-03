@@ -69,7 +69,7 @@ class AbstractBookScraper(ABC):
         self.visited_urls = set()
         self.all_books = []
         self.count = 0
-        self.batch_size = 20
+        self.batch_size = 5
         self.strainer = SoupStrainer()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

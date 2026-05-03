@@ -272,9 +272,12 @@ class BookManager:
 
     def upload_books(self, source: str, books: list[dict]) -> None:
         """
-        Delete all books for this source then insert new ones.
+        Merge freshly-scraped books with the existing catalog for this source, then
+        replace the source's documents with the merged result.
+
+        This preserves books that were skipped by an incremental scrape (e.g. filtered
+        by lastmod) while still updating any book whose page was re-crawled this run.
         Adds normalized fields (titleNormalized, authorNormalized) for hamza-agnostic search.
-        Fills in author/authorArabic from `author_cache` when the scraper couldn't find one.
         """
 
         # applied = self._apply_author_cache(books)
@@ -307,5 +310,35 @@ class BookManager:
                 f"upload_books: attached embeddings to {embedded}/{len(books_dicts)} books for {source}"
             )
 
+        # Build a merged catalog: start from what's already in the DB, then
+        # overwrite with freshly-scraped books so that updated books win.
+        # Strip _id so MongoDB generates fresh IDs after the delete below.
+        existing: dict[str, dict] = {}
+        for doc in self.books.find({"source": source}):
+            doc.pop("_id", None)
+            url = doc.get("url")
+            if url:
+                existing[url] = doc
+
+        scraped_count = len(books_dicts)
+        new_count = 0
+        updated_count = 0
+        for book in books_dicts:
+            url = book.get("url")
+            if url:
+                if url in existing:
+                    updated_count += 1
+                else:
+                    new_count += 1
+                existing[url] = book
+
+        merged = list(existing.values())
+        logger.info(
+            f"upload_books: {source} — {scraped_count} scraped this run "
+            f"({new_count} new, {updated_count} updated), "
+            f"{len(merged)} total after merge"
+        )
+
         self.books.delete_many({"source": source})
-        self.books.insert_many(books_dicts)
+        if merged:
+            self.books.insert_many(merged)
