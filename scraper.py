@@ -90,6 +90,12 @@ class AbstractBookScraper(ABC):
         self.error_count = 0
         self.ERROR_THRESHOLD = 20
 
+        # Global pause gate: when cleared, all fetches wait until it's set again.
+        # Used to back off every concurrent request on 429/503 responses.
+        self._resume_event = asyncio.Event()
+        self._resume_event.set()
+        self._pause_lock = asyncio.Lock()
+
         # converting from GBP to USD
         self.convert_rate = convert_rate
         self.test_urls = []  # urls that should cover all possible cases
@@ -146,46 +152,97 @@ class AbstractBookScraper(ABC):
         if book_info:
             self.all_books.append(book_info.model_dump(exclude_none=True))
 
-    async def fetch_page(
-        self, session: ClientSession, url: str, referer: str = None
-    ) -> tuple[str, str]:
-        logger.info(f"Fetching page: {url}")
-        try:
-            # Add referer header if provided
-            headers = self.headers.copy()
-            if referer:
-                headers["Referer"] = referer
-                headers["Sec-Fetch-Site"] = "same-origin"
+    async def _pause_all(self, delay: int, reason: str) -> None:
+        """Pause every concurrent fetch for `delay` seconds.
 
-            async with session.get(url, headers=headers, timeout=20) as response:
+        Only the first caller actually sleeps; others awaiting the event
+        will resume together once the pause is lifted.
+        """
+        if self._pause_lock.locked():
+            # Another task is already handling the global backoff; just wait.
+            await self._resume_event.wait()
+            return
+
+        async with self._pause_lock:
+            self._resume_event.clear()
+            self.logger.warning(
+                f"Pausing all fetches for {delay}s due to {reason}"
+            )
+            try:
+                await asyncio.sleep(delay)
+            finally:
+                self._resume_event.set()
+                self.logger.info("Resuming fetches after global backoff")
+
+    async def fetch_page(
+        self,
+        session: ClientSession,
+        url: str,
+        referer: str = None,
+        attempt: int = 1,
+        max_attempts: int = 4,
+    ) -> tuple[str, str]:
+        # Wait if a global backoff is in progress (e.g. another task hit 429).
+        await self._resume_event.wait()
+
+        logger.info(f"Fetching page: {url}")
+
+        headers = self.headers.copy()
+        if referer:
+            headers["Referer"] = referer
+            headers["Sec-Fetch-Site"] = "same-origin"
+
+        try:
+            async with session.get(url, headers=headers, timeout=30) as response:
                 if response.status == 200:
                     content = await response.content.read()
                     return url, content
-                else:
-                    self.logger.error(
-                        f"Failed to retrieve the page at {url}. Status code: {response.status}"
+
+                self.logger.error(
+                    f"Failed to retrieve the page at {url}. Status code: {response.status}"
+                )
+
+                # transient errors: pause ALL concurrent fetches and retry
+                if response.status in [503, 429, 301]:
+                    self.error_count += 1
+                    retry_after = response.headers.get("Retry-After")
+                    try:
+                        delay = int(retry_after) + 1 if retry_after else 2 ** attempt
+                    except (TypeError, ValueError):
+                        delay = 2 ** attempt
+
+                    if attempt >= max_attempts:
+                        raise ScraperError(
+                            f"{response.status} error on {url} after {attempt} attempts"
+                        )
+
+                    await self._pause_all(delay, f"HTTP {response.status} on {url}")
+                    return await self.fetch_page(
+                        session, url, referer, attempt + 1, max_attempts
                     )
 
-                    # 503 is a temporary error, so we should retry
-                    if response.status in [503, 429, 301]:
-                        self.error_count += 1
-                        # look for retry-after header
-                        retry_after = response.headers.get("Retry-After") or 30
-                        if retry_after:
-                            self.logger.info(f"Retrying {url} in {retry_after} seconds")
-                            time.sleep(int(retry_after) + 1)
-                            return await self.fetch_page(session, url, referer)
-                        else:
-                            raise ScraperError(f"{response.status} error on {url}")
-                    
-
-        except asyncio.TimeoutError:
-            self.logger.error(f"Timeout on {url}")
+        except (asyncio.TimeoutError, aiohttp.ServerTimeoutError) as e:
+            self.error_count += 1
+            self.logger.error(
+                f"Timeout on {url} (attempt {attempt}/{max_attempts}): {e}"
+            )
+            if attempt < max_attempts:
+                delay = 2 ** attempt
+                self.logger.info(
+                    f"Retrying {url} in {delay} seconds (attempt {attempt + 1}/{max_attempts})"
+                )
+                await asyncio.sleep(delay)
+                if self.error_count > self.ERROR_THRESHOLD:
+                    raise ScraperError(f"Error threshold reached for {url}")
+                return await self.fetch_page(
+                    session, url, referer, attempt + 1, max_attempts
+                )
+            self.logger.error(f"Giving up on {url} after {attempt} timeout attempts")
+        except ScraperError:
+            raise
         except Exception as e:
             self.logger.error(f"Unexpected error on {url}: {e}")
             self.error_count += 1
-            if isinstance(e, ScraperError):
-                raise e
 
         if self.error_count > self.ERROR_THRESHOLD:
             raise ScraperError(f"Error threshold reached for {url}")

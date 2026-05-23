@@ -23,6 +23,7 @@ from stores.darulhikmah import DarulHikmah
 from stores.daruliman import Daruliman
 from stores.osman import OsmanScraper
 from stores.tahsilyayinevi import TahsilYayinevi
+from stores.anadolukitapevi import Anadolukitapevi
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -55,6 +56,7 @@ STORE_MAPPING = {
     "daruliman": Daruliman,
     "osman": OsmanScraper,
     "tahsilyayinevi": TahsilYayinevi,
+    "anadolukitapevi": Anadolukitapevi,
 }
 
 
@@ -104,6 +106,7 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             Daruliman,
             OsmanScraper,
             TahsilYayinevi,
+            Anadolukitapevi,
         ]
         logger.info("Running all scrapers")
 
@@ -119,7 +122,8 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             last_success = None if ignore_success else (
                 status.status.get(scrape.name, {}).get("last_crawl_success") or None
             )
-            books = await scrape.crawl_product_pages(last_crawl_success=last_success)
+            books = await scrape.crawl_product_pages(last_crawl_success= last_success if not ignore_success else None)
+
             time_to_crawl = datetime.now() - start_time
             # ensures that some books were actually found
             if books:
