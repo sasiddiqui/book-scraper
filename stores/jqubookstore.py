@@ -8,6 +8,7 @@ from scraper import ScraperError, AbstractBookScraper
 import time
 from book import Book
 import logging
+from datetime import datetime
 
 logger = logging.getLogger("scraper")
 
@@ -74,14 +75,10 @@ class JquBookstore(AbstractBookScraper):
 
         return book_info
 
-    async def crawl_product_pages(self) -> list[dict]:
-
-        self.test_base_url()
-
+    def _collect_product_urls(self, last_crawl_success: datetime | None = None) -> list[str]:
         base_sitemap = BeautifulSoup(
             requests.get(self.base_url + "sitemap.xml").text, "xml"
         )
-        # get the updated sitemap everytime
         sitemap_url = [
             url.text
             for url in base_sitemap.find_all("loc")
@@ -90,13 +87,44 @@ class JquBookstore(AbstractBookScraper):
         sitemap = BeautifulSoup(requests.get(sitemap_url).text, "xml")
         logger.info("JQUBookstore - Successfully fetched sitemap")
 
-        urls = [
-            url.text
-            for url in sitemap.find_all("loc")
-            if "file" not in url.text and "/products/" in url.text
-        ]
+        urls: list[str] = []
+        for url_tag in sitemap.find_all("url"):
+            loc = url_tag.find("loc")
+            if not loc or not loc.text:
+                continue
+            href = loc.text.strip()
+            if "file" in href or "/products/" not in href:
+                continue
 
-        logger.info(f"JQUBookstore - Found {len(urls)} product URLs")
+            if last_crawl_success:
+                lm = url_tag.find("lastmod")
+                if lm and lm.text:
+                    try:
+                        raw_lm = lm.text.strip().replace("Z", "+00:00")
+                        lastmod = datetime.fromisoformat(raw_lm)
+                        if lastmod.tzinfo:
+                            lastmod = lastmod.replace(tzinfo=None)
+                        lcs = last_crawl_success
+                        if getattr(lcs, "tzinfo", None):
+                            lcs = lcs.replace(tzinfo=None)
+                        if lastmod < lcs:
+                            continue
+                    except ValueError:
+                        pass
+
+            urls.append(href)
+
+        logger.info(
+            f"JQUBookstore - Found {len(urls)} product URLs"
+            + (f" (since {last_crawl_success})" if last_crawl_success else "")
+        )
+        return urls
+
+    async def crawl_product_pages(self, last_crawl_success=None) -> list[dict]:
+
+        self.test_base_url()
+
+        urls = self._collect_product_urls(last_crawl_success)
 
         async with aiohttp.ClientSession() as session:
             all_res = []

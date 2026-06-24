@@ -24,6 +24,7 @@ from stores.daruliman import Daruliman
 from stores.osman import OsmanScraper
 from stores.tahsilyayinevi import TahsilYayinevi
 from stores.anadolukitapevi import Anadolukitapevi
+from stores.safinatulnajat import SafinatUlNajat
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -57,6 +58,7 @@ STORE_MAPPING = {
     "osman": OsmanScraper,
     "tahsilyayinevi": TahsilYayinevi,
     "anadolukitapevi": Anadolukitapevi,
+    "safinatulnajat": SafinatUlNajat,
 }
 
 
@@ -107,6 +109,7 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             OsmanScraper,
             TahsilYayinevi,
             Anadolukitapevi,
+            SafinatUlNajat,
         ]
         logger.info("Running all scrapers")
 
@@ -125,10 +128,11 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             books = await scrape.crawl_product_pages(last_crawl_success= last_success if not ignore_success else None)
 
             time_to_crawl = datetime.now() - start_time
+            new_books = 0
             # ensures that some books were actually found
             if books:
                 if not no_save:
-                    db.upload_books(scrape.name, books)
+                    new_books = db.upload_books(scrape.name, books)
 
         except Exception as e:
 
@@ -147,11 +151,11 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
                 error=None,
                 last_crawled=datetime.now(),
                 time_to_crawl=time_to_crawl.seconds / 60,
-                total_books=len(books),
+                new_books=new_books,
                 last_crawl_success=datetime.now() if books else None,
             )
 
-        logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes. {len(books)} books found.")
+        logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes. {len(books) if books else 0} books found.")
 
     if not no_save and enrich:
         try:

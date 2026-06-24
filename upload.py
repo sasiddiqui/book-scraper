@@ -92,7 +92,7 @@ class StatusManager:
         last_crawled,
         error: str,
         time_to_crawl: int,
-        total_books: int | None = None,
+        new_books: int | None = None,
         last_crawl_success=None,
     ):
         if scraper_name not in self.status:
@@ -101,11 +101,10 @@ class StatusManager:
         self.status[scraper_name]["last_crawled"] = last_crawled
         self.status[scraper_name]["error"] = error
         self.status[scraper_name]["time_to_crawl"] = time_to_crawl
+        self.status[scraper_name]["total_books"] = db["books"].count_documents({"source": scraper_name})
 
-        if total_books is None:
-            total_books = db["books"].count_documents({"source": scraper_name})
-
-        self.status[scraper_name]["total_books"] = total_books
+        if new_books is not None:
+            self.status[scraper_name]["new_books"] = new_books
 
         if last_crawl_success is not None:
             self.status[scraper_name]["last_crawl_success"] = last_crawl_success
@@ -270,7 +269,7 @@ class BookManager:
             applied += 1
         return applied
 
-    def upload_books(self, source: str, books: list[dict]) -> None:
+    def upload_books(self, source: str, books: list[dict]) -> int:
         """
         Merge freshly-scraped books with the existing catalog for this source, then
         replace the source's documents with the merged result.
@@ -342,3 +341,5 @@ class BookManager:
         self.books.delete_many({"source": source})
         if merged:
             self.books.insert_many(merged)
+
+        return new_count
