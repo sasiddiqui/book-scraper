@@ -13,6 +13,9 @@ from book import Book
 from scraper import AbstractBookScraper, ScraperError
 
 SITEMAP_URL = "https://www.sifatusafwa.com/1_en_0_sitemap.xml"
+# PrestaShop product pages: /en/{category}/{slug}.html
+# Sitemap also lists manufacturers, suppliers, CMS pages, and category indexes.
+NON_PRODUCT_PREFIXES = ("manufacturer", "supplier", "content")
 
 
 class SifatuSafwa(AbstractBookScraper):
@@ -83,11 +86,34 @@ class SifatuSafwa(AbstractBookScraper):
     # ------------------------------------------------------------------
 
     def ignore_url(self, url) -> bool:
-        ig = ["#", "SubmitCurrency=", "id_currency=", ".jpg", "/ar/", "/fr/", "order="]
+        ig = [
+            "#",
+            "SubmitCurrency=",
+            "id_currency=",
+            ".jpg",
+            "/ar/",
+            "/fr/",
+            "order=",
+            "/manufacturer/",
+            "/supplier/",
+            "/content/",
+        ]
         return any(i in url for i in ig)
 
     def is_product_url(self, url):
-        return url.endswith(".html") and "/en/" in url
+        if not url.endswith(".html") or "/en/" not in url:
+            return False
+
+        prefix = f"{self.base_url.rstrip('/')}/en/"
+        if not url.startswith(prefix):
+            return False
+
+        path = url[len(prefix) :]
+        parts = path.split("/")
+        if len(parts) != 2:
+            return False
+
+        return parts[0] not in NON_PRODUCT_PREFIXES
 
     # ------------------------------------------------------------------
     # Extraction: parse data-product JSON first, fall back to og meta

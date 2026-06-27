@@ -25,6 +25,8 @@ from stores.osman import OsmanScraper
 from stores.tahsilyayinevi import TahsilYayinevi
 from stores.anadolukitapevi import Anadolukitapevi
 from stores.safinatulnajat import SafinatUlNajat
+from stores.islamicbookstore import IslamicBookstore
+from stores.jarirbooks import JarirBooks
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -59,6 +61,8 @@ STORE_MAPPING = {
     "tahsilyayinevi": TahsilYayinevi,
     "anadolukitapevi": Anadolukitapevi,
     "safinatulnajat": SafinatUlNajat,
+    "islamicbookstore": IslamicBookstore,
+    "jarirbooks": JarirBooks,
 }
 
 
