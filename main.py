@@ -27,6 +27,7 @@ from stores.anadolukitapevi import Anadolukitapevi
 from stores.safinatulnajat import SafinatUlNajat
 from stores.islamicbookstore import IslamicBookstore
 from stores.jarirbooks import JarirBooks
+from stores.islamicbookstore import IslamicBookstore
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -114,6 +115,8 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             TahsilYayinevi,
             Anadolukitapevi,
             SafinatUlNajat,
+            JarirBooks,
+            IslamicBookstore,
         ]
         logger.info("Running all scrapers")
 
