@@ -27,7 +27,7 @@ from stores.anadolukitapevi import Anadolukitapevi
 from stores.safinatulnajat import SafinatUlNajat
 from stores.islamicbookstore import IslamicBookstore
 from stores.jarirbooks import JarirBooks
-from stores.islamicbookstore import IslamicBookstore
+from stores.meccabooks import MeccaBooks
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -64,6 +64,7 @@ STORE_MAPPING = {
     "safinatulnajat": SafinatUlNajat,
     "islamicbookstore": IslamicBookstore,
     "jarirbooks": JarirBooks,
+    "meccabooks": MeccaBooks,
 }
 
 
@@ -117,6 +118,7 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             SafinatUlNajat,
             JarirBooks,
             IslamicBookstore,
+            MeccaBooks,
         ]
         logger.info("Running all scrapers")
 
