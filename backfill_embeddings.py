@@ -15,13 +15,13 @@ from __future__ import annotations
 
 import argparse
 import logging
-from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from pymongo import UpdateOne
 
 import voyage_embed
-from upload import _embedding_cache_key, _embedding_input, db
+from embedding_cache_store import EmbeddingCacheStore
+from upload import _embedding_cache_key, _embedding_input, db, to_bson_vector
 
 
 logger = logging.getLogger("backfill_embeddings")
@@ -44,7 +44,7 @@ def _needs_embedding_query(model: str) -> dict:
 def backfill(limit: int | None, batch_size: int) -> None:
     model = voyage_embed.DEFAULT_MODEL
     books_col = db["books"]
-    cache_col = db["embedding_cache"]
+    cache_store = EmbeddingCacheStore(model)
 
     query = _needs_embedding_query(model)
     total = books_col.count_documents(query)
@@ -74,13 +74,7 @@ def backfill(limit: int | None, batch_size: int) -> None:
             return
 
         unique_keys = list({k for _, k, _ in pending})
-        cached: dict[str, list[float]] = {}
-        for row in cache_col.find(
-            {"_id": {"$in": unique_keys}, "model": model}, {"vector": 1}
-        ):
-            vec = row.get("vector")
-            if vec:
-                cached[row["_id"]] = vec
+        cached: dict[str, object] = cache_store.get_many(unique_keys)
 
         # Dedupe miss texts so identical title+author across stores = 1 API call.
         misses: dict[str, str] = {}
@@ -99,23 +93,10 @@ def backfill(limit: int | None, batch_size: int) -> None:
                 raise RuntimeError(
                     "VOYAGE_API_KEY is not set; backfill cannot proceed"
                 )
-            now = datetime.now(timezone.utc)
-            cache_ops = [
-                UpdateOne(
-                    {"_id": key},
-                    {
-                        "$set": {
-                            "model": model,
-                            "vector": vec,
-                            "created_at": now,
-                        }
-                    },
-                    upsert=True,
-                )
-                for key, vec in zip(miss_keys, vectors)
-            ]
-            cached.update(dict(zip(miss_keys, vectors)))
-            cache_col.bulk_write(cache_ops, ordered=False)
+            new_vectors = dict(zip(miss_keys, vectors))
+            cache_store.put_many(new_vectors)
+            for key, vec in new_vectors.items():
+                cached[key] = to_bson_vector(vec)
 
         book_ops: list[UpdateOne] = []
         for _id, key, _ in pending:

@@ -149,7 +149,7 @@ class AbstractBookScraper(ABC):
 
     # in a method so that it can be overridden by some scrapers
     def add_book(self, book_info: Book) -> None:
-        if book_info:
+        if book_info and book_info.instock:
             self.all_books.append(book_info.model_dump(exclude_none=True))
 
     async def _pause_all(self, delay: int, reason: str) -> None:

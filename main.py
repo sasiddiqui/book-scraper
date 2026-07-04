@@ -28,6 +28,8 @@ from stores.safinatulnajat import SafinatUlNajat
 from stores.islamicbookstore import IslamicBookstore
 from stores.jarirbooks import JarirBooks
 from stores.meccabooks import MeccaBooks
+from stores.turath import TurathPublishing
+from stores.whitethreadpress import WhiteThreadPress
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -65,6 +67,8 @@ STORE_MAPPING = {
     "islamicbookstore": IslamicBookstore,
     "jarirbooks": JarirBooks,
     "meccabooks": MeccaBooks,
+    "turath": TurathPublishing,
+    "whitethreadpress": WhiteThreadPress,
 }
 
 
@@ -119,6 +123,8 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             JarirBooks,
             IslamicBookstore,
             MeccaBooks,
+            TurathPublishing,
+            WhiteThreadPress,
         ]
         logger.info("Running all scrapers")
 
@@ -155,13 +161,18 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             )
 
         else:
+            crawl_watermark = getattr(scrape, "last_crawl_watermark", None)
             status.update_status(
                 scrape.name,
                 error=None,
                 last_crawled=datetime.now(),
                 time_to_crawl=time_to_crawl.seconds / 60,
                 new_books=new_books,
-                last_crawl_success=datetime.now() if books else None,
+                last_crawl_success=(
+                    crawl_watermark
+                    if books and crawl_watermark is not None
+                    else (datetime.now() if books else None)
+                ),
             )
 
         logger.info(f"Finished {scrape.name} in {time_to_crawl.seconds/60} minutes. {len(books) if books else 0} books found.")

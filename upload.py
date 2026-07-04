@@ -1,15 +1,15 @@
 from book import Book
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-from pymongo import UpdateOne
+from bson.binary import Binary, BinaryVectorDtype
 import hashlib
 import logging
 import os
 import re
-from datetime import datetime, timezone
 
 from title_key import title_key
 import voyage_embed
+from embedding_cache_store import EmbeddingCacheStore
 
 logger = logging.getLogger("scraper")
 
@@ -134,12 +134,30 @@ def _embedding_cache_key(text: str, model: str) -> str:
     return digest
 
 
+def to_bson_vector(vec):
+    """
+    Pack an embedding into a compact BSON float32 vector (BinData).
+
+    Storing 1024-dim vectors as a plain BSON array costs ~13 KB/doc because every
+    element carries a string index key; the float32 BinData encoding is ~4 KB and
+    is the format Atlas Vector Search recommends. Accepts either a raw list of
+    floats or an already-encoded Binary (returned unchanged) so callers can stay
+    format-agnostic during the migration window.
+    """
+    if vec is None:
+        return None
+    if isinstance(vec, Binary):
+        return vec
+    return Binary.from_vector([float(x) for x in vec], BinaryVectorDtype.FLOAT32)
+
+
 class BookManager:
     def __init__(self):
         self.books = db["books"]
         self.author_cache = db["author_cache"]
-        self.embedding_cache = db["embedding_cache"]
         self.embedding_model = os.getenv("VOYAGE_MODEL", voyage_embed.DEFAULT_MODEL)
+        # Embedding cache now lives in a local SQLite file, not the Atlas cluster.
+        self.embedding_cache = EmbeddingCacheStore(self.embedding_model)
 
     def _apply_author_cache(self, books: list[dict]) -> int:
         """
@@ -205,15 +223,10 @@ class BookManager:
         if not entries:
             return 0
 
-        # Pull existing vectors from the cache in one query.
+        # Pull existing vectors from the local SQLite cache. It hands them back as
+        # float32 BinData, ready to drop straight into books.
         unique_keys = list({k for _, k, _ in entries})
-        cached: dict[str, list[float]] = {}
-        for row in self.embedding_cache.find(
-            {"_id": {"$in": unique_keys}}, {"vector": 1}
-        ):
-            vec = row.get("vector")
-            if vec:
-                cached[row["_id"]] = vec
+        cached: dict[str, Binary] = self.embedding_cache.get_many(unique_keys)
 
         # Figure out which unique texts still need an API call. We dedupe so
         # identical texts across books only cost one embedding.
@@ -239,25 +252,10 @@ class BookManager:
                 # We still use whatever was in cache.
                 pass
             else:
-                now = datetime.now(timezone.utc)
-                ops: list[UpdateOne] = []
-                for key, vec in zip(miss_keys, vectors):
-                    cached[key] = vec
-                    ops.append(
-                        UpdateOne(
-                            {"_id": key},
-                            {
-                                "$set": {
-                                    "model": self.embedding_model,
-                                    "vector": vec,
-                                    "created_at": now,
-                                }
-                            },
-                            upsert=True,
-                        )
-                    )
-                if ops:
-                    self.embedding_cache.bulk_write(ops, ordered=False)
+                new_vectors = dict(zip(miss_keys, vectors))
+                self.embedding_cache.put_many(new_vectors)
+                for key, vec in new_vectors.items():
+                    cached[key] = to_bson_vector(vec)
 
         applied = 0
         for i, key, _ in entries:
