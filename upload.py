@@ -1,6 +1,7 @@
 from book import Book
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+from pymongo import UpdateOne
 from bson.binary import Binary, BinaryVectorDtype
 import hashlib
 import logging
@@ -12,6 +13,15 @@ import voyage_embed
 from embedding_cache_store import EmbeddingCacheStore
 
 logger = logging.getLogger("scraper")
+
+# How many upsert ops to send per bulk_write round-trip. Keeps peak memory
+# bounded on small hosts (e.g. the Raspberry Pi) during full crawls.
+UPSERT_CHUNK = 500
+
+# Safety valve for full-crawl deletion: if a full crawl would delete more than
+# this fraction of a source's existing books, assume the crawl was partial/broken
+# and skip the deletes rather than nuke the catalog.
+DELETION_SAFETY_RATIO = 0.5
 
 uri = open("mongourl.txt").read().strip()
 
@@ -158,6 +168,9 @@ class BookManager:
         self.embedding_model = os.getenv("VOYAGE_MODEL", voyage_embed.DEFAULT_MODEL)
         # Embedding cache now lives in a local SQLite file, not the Atlas cluster.
         self.embedding_cache = EmbeddingCacheStore(self.embedding_model)
+        # Backs the per-source upsert filter and the count_documents({"source"}) calls
+        # in StatusManager. Idempotent — a no-op once the index exists.
+        self.books.create_index([("source", 1), ("url", 1)], name="source_1_url_1")
 
     def _apply_author_cache(self, books: list[dict]) -> int:
         """
@@ -267,14 +280,22 @@ class BookManager:
             applied += 1
         return applied
 
-    def upload_books(self, source: str, books: list[dict]) -> int:
+    def upload_books(self, source: str, books: list[dict], full_crawl: bool = False) -> int:
         """
-        Merge freshly-scraped books with the existing catalog for this source, then
-        replace the source's documents with the merged result.
+        Upsert freshly-scraped books into the catalog, keyed on (source, url).
 
-        This preserves books that were skipped by an incremental scrape (e.g. filtered
-        by lastmod) while still updating any book whose page was re-crawled this run.
+        Only the books scraped this run are written, so unchanged books are never
+        touched — no oplog entries and no search/vector index churn for them. This
+        replaces the old delete-all + insert-all pattern that rewrote every book on
+        every run (and regenerated their _ids).
+
         Adds normalized fields (titleNormalized, authorNormalized) for hamza-agnostic search.
+
+        When `full_crawl` is True (the scraper saw the whole catalog, e.g. no
+        incremental watermark), books that exist in the DB but were absent from this
+        crawl are treated as delisted and deleted — unless that would remove more than
+        DELETION_SAFETY_RATIO of the source (guards against a partial/broken crawl).
+        Incremental crawls never delete, since they only see a slice of the catalog.
         """
 
         # applied = self._apply_author_cache(books)
@@ -307,37 +328,62 @@ class BookManager:
                 f"upload_books: attached embeddings to {embedded}/{len(books_dicts)} books for {source}"
             )
 
-        # Build a merged catalog: start from what's already in the DB, then
-        # overwrite with freshly-scraped books so that updated books win.
-        # Strip _id so MongoDB generates fresh IDs after the delete below.
-        existing: dict[str, dict] = {}
-        for doc in self.books.find({"source": source}):
-            doc.pop("_id", None)
-            url = doc.get("url")
-            if url:
-                existing[url] = doc
-
-        scraped_count = len(books_dicts)
-        new_count = 0
-        updated_count = 0
+        # One upsert per scraped book, keyed on (source, url). Chunked to bound
+        # peak memory when a full crawl produces tens of thousands of ops.
+        ops: list[UpdateOne] = []
+        scraped_urls: set[str] = set()
         for book in books_dicts:
             url = book.get("url")
-            if url:
-                if url in existing:
-                    updated_count += 1
-                else:
-                    new_count += 1
-                existing[url] = book
+            if not url:
+                continue
+            scraped_urls.add(url)
+            ops.append(
+                UpdateOne(
+                    {"source": source, "url": url},
+                    {"$set": book},
+                    upsert=True,
+                )
+            )
 
-        merged = list(existing.values())
+        new_count = 0
+        updated_count = 0
+        for i in range(0, len(ops), UPSERT_CHUNK):
+            result = self.books.bulk_write(ops[i : i + UPSERT_CHUNK], ordered=False)
+            new_count += result.upserted_count
+            updated_count += result.matched_count
+
+        deleted_count = 0
+        if full_crawl:
+            # Covered read (url only, straight from the {source,url} index — no docs
+            # or embeddings fetched) to find books that disappeared from the store.
+            existing_urls = {
+                doc["url"]
+                for doc in self.books.find(
+                    {"source": source}, {"url": 1, "_id": 0}
+                )
+                if doc.get("url")
+            }
+            to_delete = existing_urls - scraped_urls
+            if (
+                existing_urls
+                and len(to_delete) / len(existing_urls) > DELETION_SAFETY_RATIO
+            ):
+                logger.warning(
+                    f"upload_books: {source} — refusing to delete "
+                    f"{len(to_delete)}/{len(existing_urls)} books "
+                    f"(> {DELETION_SAFETY_RATIO:.0%}); likely a partial crawl, "
+                    f"skipping deletion"
+                )
+            elif to_delete:
+                result = self.books.delete_many(
+                    {"source": source, "url": {"$in": list(to_delete)}}
+                )
+                deleted_count = result.deleted_count
+
         logger.info(
-            f"upload_books: {source} — {scraped_count} scraped this run "
-            f"({new_count} new, {updated_count} updated), "
-            f"{len(merged)} total after merge"
+            f"upload_books: {source} — {len(scraped_urls)} scraped "
+            f"({new_count} new, {updated_count} updated, {deleted_count} deleted), "
+            f"full_crawl={full_crawl}"
         )
-
-        self.books.delete_many({"source": source})
-        if merged:
-            self.books.insert_many(merged)
 
         return new_count

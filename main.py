@@ -30,6 +30,7 @@ from stores.jarirbooks import JarirBooks
 from stores.meccabooks import MeccaBooks
 from stores.turath import TurathPublishing
 from stores.whitethreadpress import WhiteThreadPress
+from stores.imamghazali import ImamGhazali
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -69,6 +70,7 @@ STORE_MAPPING = {
     "meccabooks": MeccaBooks,
     "turath": TurathPublishing,
     "whitethreadpress": WhiteThreadPress,
+    "imamghazali": ImamGhazali,
 }
 
 
@@ -125,6 +127,7 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             MeccaBooks,
             TurathPublishing,
             WhiteThreadPress,
+            ImamGhazali,
         ]
         logger.info("Running all scrapers")
 
@@ -147,7 +150,11 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             # ensures that some books were actually found
             if books:
                 if not no_save:
-                    new_books = db.upload_books(scrape.name, books)
+                    # No incremental watermark => the scraper saw the whole catalog,
+                    # so upload_books can safely prune delisted books for this source.
+                    new_books = db.upload_books(
+                        scrape.name, books, full_crawl=(last_success is None)
+                    )
 
         except Exception as e:
 

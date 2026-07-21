@@ -77,7 +77,7 @@ class TurathPublishing(AbstractBookScraper):
             "Turath Publishing",
             convert_rate=1,
         )
-        self.batch_size = 5
+        self.batch_size = 3
         self.batch_delay = 0.5
         self.last_crawl_watermark: datetime | None = None
 
