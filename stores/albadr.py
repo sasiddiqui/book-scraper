@@ -9,7 +9,7 @@ class AlBadrBooksScraper(AbstractBookScraper):
         self.batch_size = 5
 
     def ignore_url(self, url) -> bool:
-        ig = ["/uploads/", "/wishlist/", "/about/", "/contact/", "?", "#"]
+        ig = ["/uploads/", "/wishlist/", "/about/", "/contact/", "?", "#", "product-tag"]
 
         return any(i in url for i in ig)
 

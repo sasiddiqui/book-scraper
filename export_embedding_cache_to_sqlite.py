@@ -67,13 +67,13 @@ def export(batch_size: int) -> None:
 
         for model in list(buffers.keys()):
             flush(model)
+
+        for model, store in stores.items():
+            logger.info(f"model={model}: local cache now holds {store.count()} rows")
+        logger.info(f"export done. total exported = {exported}")
     finally:
         for store in stores.values():
             store.close()
-
-    for model, store in stores.items():
-        logger.info(f"model={model}: local cache now holds {store.count()} rows")
-    logger.info(f"export done. total exported = {exported}")
 
 
 if __name__ == "__main__":
