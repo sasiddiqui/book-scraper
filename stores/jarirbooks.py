@@ -24,7 +24,8 @@ TITLE_RE = re.compile(
     re.I,
 )
 IMAGE_RE = re.compile(
-    r'id="photo"[^>]*src="(https://s\.turbifycdn\.com/aah/yhst-141393581866279/[^"]+)"',
+    r'id="photo"[^>]*\ssrc="(https://s\.turbifycdn\.com/aah/yhst-141393581866279/[^"]+)"'
+    r'|src="(https://s\.turbifycdn\.com/aah/yhst-141393581866279/[^"]+)"[^>]*\sid="photo"',
     re.I,
 )
 HAS_PAGES_RE = re.compile(r"<th>Pages:\s*</th>\s*<td>", re.I)
@@ -156,7 +157,9 @@ class JarirBooks(AbstractBookScraper):
 
     def _parse_image(self, product_html: str) -> str | None:
         match = IMAGE_RE.search(product_html)
-        return match.group(1) if match else None
+        if not match:
+            return None
+        return match.group(1) or match.group(2)
 
     def _extract_from_html(self, html: str, url: str) -> dict | None:
         page_attrs = self._parse_page_attrs(html)
