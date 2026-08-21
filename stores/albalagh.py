@@ -6,6 +6,7 @@ from bs4 import SoupStrainer
 class AlBalagh(AbstractBookScraper):
     def __init__(self):
         super().__init__("https://www.albalaghbooks.com", "Al-Balagh")
+        self.headers["User-Agent"] = "Kitaab Finder Scraper"
         self.strainer = SoupStrainer(
             ["div", "h1"],
             class_=[
@@ -15,6 +16,7 @@ class AlBalagh(AbstractBookScraper):
             ],
         )
         self.batch_size = 20
+
 
     def ignore_url(self, url) -> bool:
         ig = [
