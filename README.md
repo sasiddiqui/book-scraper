@@ -35,3 +35,17 @@ python backfill_embeddings.py --limit 500      # smoke test
 ```
 
 The matching Atlas Vector Search index definition (`vector_index`, 1024-dim cosine, filter fields `source` + `instock`) is documented in `Islamic-Book-Compare/README.md`.
+
+## Search normalization
+
+`titleNormalized`, `authorNormalized`, `authorArabicNormalized` and `publisherNormalized` are written at upload time by `normalize.py` (`sanitize_arabic_text`). It is a port of `normalizeText` in the frontend (`Islamic-Book-Compare/src/lib/server/search/normalize.ts`): the two must stay byte-identical, and both repos test the same case table (`tests/test_normalize.py` here, `normalize.test.ts` there). Change one, change the other.
+
+After changing the normalizer, recompute existing rows (idempotent, resumable, does not touch embeddings):
+
+```bash
+python backfill_normalized.py --dry-run      # how many rows would change
+python backfill_normalized.py                # log line per batch includes last_id
+python backfill_normalized.py --start-after <last_id>   # resume an interrupted run
+```
+
+Run the tests with `python -m pytest tests/test_normalize.py`.

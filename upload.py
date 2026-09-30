@@ -6,8 +6,8 @@ from bson.binary import Binary, BinaryVectorDtype
 import hashlib
 import logging
 import os
-import re
 
+from normalize import sanitize_arabic_text  # also imported from here by enrich_authors.py
 from title_key import title_key
 import voyage_embed
 from embedding_cache_store import EmbeddingCacheStore
@@ -30,38 +30,6 @@ client.admin.command("ping")
 print("Pinged your deployment. You successfully connected to MongoDB!")
 
 db = client["data"]
-
-
-def sanitize_arabic_text(text: str | None) -> str | None:
-    """
-    Normalizes Arabic text
-
-    Replaces:
-    - أ (alif with hamza above) → ا
-    - إ (alif with hamza below) → ا
-    - آ (alif with madda) → ا
-    - ؤ (waw with hamza above) → و
-    - ال (when at the beginning of a word) → null
-    - remove harkaat
-    """
-    if not text:
-        return text
-
-    # Replace hamza variants with regular alif
-    normalized = text.replace("أ", "ا")  # alif with hamza above
-    normalized = normalized.replace("إ", "ا")  # alif with hamza below
-    normalized = normalized.replace("آ", "ا")  # alif with madda
-    normalized = normalized.replace("ؤ", "و")  # waw with hamza above
-    normalized = normalized.replace("ئ", "ي")  # ya with hamza
-    normalized = normalized.replace("ٱ", "ا")  # hamzah al wasl
-    normalized = re.sub(
-        r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]", "", normalized
-    )
-
-    # remove ال when at the beggining of a word using a regex
-    normalized = re.sub(r"\bال", "", normalized)
-
-    return normalized.strip()
 
 
 class StatusManager:
