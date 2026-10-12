@@ -32,6 +32,7 @@ from stores.turath import TurathPublishing
 from stores.whitethreadpress import WhiteThreadPress
 from stores.imamghazali import ImamGhazali
 from stores.mawlanabooks import MawlanaBooks
+from stores.assubki import AsSubkiBooks
 from upload import BookManager, StatusManager
 import enrich_authors
 import logging
@@ -73,6 +74,7 @@ STORE_MAPPING = {
     "whitethreadpress": WhiteThreadPress,
     "imamghazali": ImamGhazali,
     "mawlanabooks": MawlanaBooks,
+    "assubki": AsSubkiBooks,
 }
 
 
@@ -131,6 +133,7 @@ async def main(store_name=None, no_save=False, enrich=False, ignore_success=Fals
             WhiteThreadPress,
             ImamGhazali,
             MawlanaBooks,
+            AsSubkiBooks,
         ]
         logger.info("Running all scrapers")
 
